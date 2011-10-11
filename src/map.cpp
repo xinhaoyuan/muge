@@ -1,36 +1,37 @@
 #include <fstream>
+#include <string>
+
 #include "map.hpp"
+#include "resource.hpp"
 
 namespace Game
 {
-	int MapTiles::sTPL;
-	int MapTiles::sWidth;
-	int MapTiles::sHeight;
-	int MapTiles::sLHeight;
-	SDL_Surface *MapTiles::sTileTexture;
-
-	void
-	MapTiles::LoadResources(const char *confname)
+	MapTiles *
+	MapTiles::Load(const char *name)
 	{
+		MapTiles *result = new MapTiles;
+		
 		std::string filename;
-		std::ifstream conf(confname);
+		std::ifstream conf(name);
 
-		conf >> sWidth;
-		conf >> sHeight;
-		conf >> sLHeight;
-		conf >> sTPL;
+		conf >> result->mWidth;
+		conf >> result->mHeight;
+		conf >> result->mLHeight;
+		conf >> result->mTPL;
+		conf >> result->mTransR;
+		conf >> result->mTransG;
+		conf >> result->mTransB;
 
 		conf >> filename;
 		
 		SDL_Surface *suf = SDL_LoadBMP(filename.c_str());
-		sTileTexture = SDL_DisplayFormat(suf);
+		result->mTileTexture = SDL_DisplayFormat(suf);
 		SDL_FreeSurface(suf);
-	}
 
-	void
-	MapTiles::UnloadResources(void)
-	{
-		SDL_FreeSurface(sTileTexture);
+		SDL_SetColorKey(result->mTileTexture, SDL_SRCCOLORKEY,
+						SDL_MapRGB(result->mTileTexture->format, result->mTransR, result->mTransG, result->mTransB));
+
+		return result;
 	}
 
 	void
@@ -38,31 +39,26 @@ namespace Game
 	{
 		SDL_Rect src_rect;
 
-		src_rect.x = id % sTPL * sWidth;
-		src_rect.y = id / sTPL * (sHeight + sLHeight);
-		src_rect.w = sWidth;
-		src_rect.h = sHeight + sLHeight;
+		src_rect.x = id % mTPL * mWidth;
+		src_rect.y = id / mTPL * (mHeight + mLHeight);
+		src_rect.w = mWidth;
+		src_rect.h = mHeight + mLHeight;
 
-		SDL_BlitSurface(sTileTexture, &src_rect, surface, rect);
+		SDL_BlitSurface(mTileTexture, &src_rect, surface, rect);
 	}
 
 	class MapSprite : public Sprite
 	{
+		
 		int mId;
+		MapTiles *mTiles;
 	public:
 		void
-		SetId(int id) { mId = id; }
+		Set(int id, MapTiles *tiles) { mId = id; mTiles = tiles; }
 	
 		void
 		Show(GameEngine::tick_t tick, SDL_Surface *screen, SDL_Rect *rect) {
-			MapTiles::Show(mId, tick, screen, rect);
-		}
-
-		void
-		ShowWithBR(GameEngine::tick_t tick, SDL_Surface *screen, SDL_Rect *rect) {
-			rect->x -= MapTiles::sWidth  - 1;
-			rect->y -= MapTiles::sHeight - 1;
-			Show(tick, screen, rect);
+			mTiles->Show(mId, tick, screen, rect);
 		}
 	};
 
@@ -159,9 +155,9 @@ namespace Game
 		node->mDX = dx;
 		node->mDY = dy;
 
-		node->mXIdx = DivDown(x + dx - 1, MapTiles::sWidth);
-		node->mYIdx = DivDown(y + dy - z - 1, MapTiles::sHeight);
-		node->mZIdx = DivDown(z, MapTiles::sLHeight);
+		node->mXIdx = DivDown(x + dx - 1, mMapTiles->mWidth);
+		node->mYIdx = DivDown(y + dy - z - 1, mMapTiles->mHeight);
+		node->mZIdx = DivDown(z, mMapTiles->mLHeight);
 		std::deque<TileNode *> *q = mTileMap.Touch(node->mXIdx, node->mYIdx, node->mZIdx);
 		node->mIt = q->insert(q->end(), node);
 
@@ -177,9 +173,9 @@ namespace Game
 		if (q->empty())
 			mTileMap.Remove(node->mXIdx, node->mYIdx, node->mZIdx);
 
-		node->mXIdx = DivDown(node->mX + node->mDX - 1, MapTiles::sWidth);
-		node->mYIdx = DivDown(node->mY + node->mDY - node->mZ - 1, MapTiles::sHeight);
-		node->mZIdx = DivDown(node->mZ, MapTiles::sLHeight);
+		node->mXIdx = DivDown(node->mX + node->mDX - 1, mMapTiles->mWidth);
+		node->mYIdx = DivDown(node->mY + node->mDY - node->mZ - 1, mMapTiles->mHeight);
+		node->mZIdx = DivDown(node->mZ, mMapTiles->mLHeight);
 		
 		q = mTileMap.Touch(node->mXIdx, node->mYIdx, node->mZIdx);
 		node->mIt = q->insert(q->end(), node);
@@ -197,14 +193,20 @@ namespace Game
 		delete node;
 	}
 
-	void
-	Map::Load(const char *filename)
+	Map *
+	Map::Load(const char *name)
 	{
-		std::ifstream fin(filename);
+		Map *result = new Map();
+		
+		std::ifstream fin(name);
 		int w, h, count;
 		fin >> w >> h >> count;
+		std::string tilesname;
+		fin >> tilesname;
 
-		mMapSprite = new MapSprite[count];
+
+		result->mMapTiles  = Resource::Get<MapTiles>(tilesname.c_str());
+		result->mMapSprite = new MapSprite[count];
 
 		int i, j, c = 0, d;
 		for (j = 0; j != h; ++ j)
@@ -217,19 +219,22 @@ namespace Game
 					int id;
 					fin >> id;
 
-					mMapSprite[c].SetId(id);
-					AddSprite(&mMapSprite[c],
-							  i * MapTiles::sWidth,
-							  j * MapTiles::sHeight,
-							  (d - 1) * MapTiles::sLHeight,
-							  MapTiles::sWidth, MapTiles::sHeight + MapTiles::sLHeight,
-							  MapTiles::sWidth - 1, MapTiles::sHeight - 1);
+					result->mMapSprite[c].Set(id, result->mMapTiles);
+					result->AddSprite(&result->mMapSprite[c],
+									  i * result->mMapTiles->mWidth,
+									  j * result->mMapTiles->mHeight,
+									  (d - 1) * result->mMapTiles->mLHeight,
+									  result->mMapTiles->mWidth,
+									  result->mMapTiles->mHeight + result->mMapTiles->mLHeight,
+									  result->mMapTiles->mWidth - 1, result->mMapTiles->mHeight - 1);
 					
 					c ++;
 					d --;
 				}
 			}
 		}
+
+		return result;
 	}
 
 	void

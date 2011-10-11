@@ -11,6 +11,7 @@
 
 #include "sprite.hpp"
 #include "map.hpp"
+#include "resource.hpp"
 
 using namespace GameEngine;
 using namespace Game;
@@ -70,10 +71,10 @@ public:
 		SDL_Rect rect;
 
 		if (SDL_keystate[SDLK_LEFT] ^ SDL_keystate[SDLK_RIGHT])
-			me->mX += (tick - lastTick) * (SDL_keystate[SDLK_RIGHT] ? 1 : -1);
+			meX += (tick - lastTick) * (SDL_keystate[SDLK_RIGHT] ? 1 : -1);
 
 		if (SDL_keystate[SDLK_DOWN] ^ SDL_keystate[SDLK_UP])
-			me->mY += (tick - lastTick) * (SDL_keystate[SDLK_DOWN] ? 1 : -1);
+			meY += (tick - lastTick) * (SDL_keystate[SDLK_DOWN] ? 1 : -1);
 
 		map->UpdateSprite(me);
 
@@ -95,10 +96,7 @@ public:
 
 		world.lastTick = 0;
 
-		MapTiles::LoadResources("data/maptiles");
-		world.map = new Map();
-
-		world.map->Load("data/map1");
+		world.map = Game::Resource::Get<Game::Map>("data/map1");
 		world.map->AddSprite(new SimpleSprite("gfx/budan.bmp", 32, 32, 4, 0, 0xff, 0xff), 16, -16, 0, 32, 32, 31, 31);
 		world.me = world.map->AddSprite(new SimpleSprite("gfx/dango.bmp", 32, 32, 8, 0, 0xff, 0xff), -16, -16, 0, 32, 32, 31, 31);
 		world.meX = -200;

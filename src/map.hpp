@@ -13,18 +13,19 @@ namespace Game
 
 	class MapTiles
 	{
-		static int sTPL;
-	
+		int mTPL;
+		SDL_Surface *mTileTexture;
+		
 	public:
-		static int sWidth;
-		static int sHeight;
-		static int sLHeight;
-	
-		static SDL_Surface *sTileTexture;
-
-		static void LoadResources(const char *confname);
-		static void UnloadResources(void);
-		static void Show(int id, GameEngine::tick_t tick, SDL_Surface *surface, SDL_Rect *rect);
+		int mWidth;
+		int mHeight;
+		int mLHeight;
+		int mTransR;
+		int mTransG;
+		int mTransB;
+		
+		static MapTiles *Load(const char *confname);
+		void Show(int id, GameEngine::tick_t tick, SDL_Surface *surface, SDL_Rect *rect);
 	};
 
 	class TileNode
@@ -71,13 +72,15 @@ namespace Game
 		TileMap    mTileMap;
 		MapSprite *mMapSprite;
 
+		MapTiles  *mMapTiles;
+
 	public:
 
 		TileNode *AddSprite(Sprite *sprite, int x, int y, int z, int w, int h, int dx, int dy);
 		void      UpdateSprite(TileNode *sprite);
 		void      RemoveSprite(TileNode *sprite);
 		
-		void Load(const char *filename);
+		static Map *Load(const char *filename);
 		void Show(GameEngine::tick_t tick, SDL_Surface *screen, SDL_Rect *rect, int x, int y, int w, int h);	
 		~Map(void);
 	};
