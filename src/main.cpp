@@ -136,7 +136,7 @@ public:
 				else exret = OBJECT_NULL;
 			}
 		}
-		
+
 		IO::Open();
 	}
 } initEvent;
