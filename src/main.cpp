@@ -37,7 +37,7 @@ public:
 	}
 
 	void
-	SetViewPort(int vpx, int vpy) {
+	SetViewPoint(int vpx, int vpy) {
 		mVPX = vpx;
 		mVPY = vpy;
 	}
@@ -47,14 +47,6 @@ public:
 		SDL_FillRect(screen, &screen->clip_rect, SDL_MapRGB(screen->format, 0, 0, 0));
 
 		SDL_Rect rect;
-
-		// if (SDL_keystate[SDLK_LEFT] ^ SDL_keystate[SDLK_RIGHT])
-		// 	meX += (tick - lastTick) * (SDL_keystate[SDLK_RIGHT] ? 1 : -1);
-
-		// if (SDL_keystate[SDLK_DOWN] ^ SDL_keystate[SDLK_UP])
-		// 	meY += (tick - lastTick) * (SDL_keystate[SDLK_DOWN] ? 1 : -1);
-
-		// map->UpdateSprite(me);
 
 		rect.x = 0;
 		rect.y = 0;
@@ -123,12 +115,12 @@ public:
 					exret->external.free = NULL;
 					OBJECT_TYPE_INIT(exret, OBJECT_TYPE_EXTERNAL);
 				}
-				else if (xstring_equal_cstr(excall[0]->string, "SetViewPort", -1))
+				else if (xstring_equal_cstr(excall[0]->string, "SetViewPoint", -1))
 				{
 					int x = INT_UNBOX(excall[1]);
 					int y = INT_UNBOX(excall[2]);
 
-					world.SetViewPort(x, y);
+					world.SetViewPoint(x, y);
 
 					exret = OBJECT_NULL;
 				}
