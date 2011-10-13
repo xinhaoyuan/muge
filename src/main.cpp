@@ -28,9 +28,11 @@ public:
 	
 	Map *mMap;
 	int mVPX, mVPY;
-	tick_t mLastTick;
+	tick_t mTick;
 
-	Scene() { mLastTick = 0; }
+	std::map<tick_t, std::deque<object_t> > mTickEvent;
+
+	Scene() { mTick = 0; }
 
 	void
 	SetMap(Map *map) {
@@ -45,6 +47,26 @@ public:
 
 	void Draw(tick_t tick, void *scene) {
 
+		std::vector<object_t> eventArgs;
+		std::vector<object_t> excall;
+		std::map<tick_t, std::deque<object_t> >::iterator b;
+		
+		while (((b = mTickEvent.begin()) != mTickEvent.end()) &&
+			   (b->first <= tick))
+		{
+			mTick = b->first;
+
+			std::deque<object_t> *q = &b->second;
+			std::deque<object_t>::iterator _it = q->begin();
+			while (_it != q->end())
+			{
+				mSE.Apply(*_it, &eventArgs, &excall);
+				++ _it;
+			}
+
+			mTickEvent.erase(b);
+		}
+		
 		SDL_Surface *screen = (SDL_Surface *)scene;
 		SDL_FillRect(screen, &screen->clip_rect, SDL_MapRGB(screen->format, 0, 0, 0));
 
@@ -54,8 +76,6 @@ public:
 		rect.y = 0;
 		mMap->UpdateMotion(tick);
 		mMap->Show(tick, screen, &rect, mVPX, mVPY, 640, 480);
-
-		mLastTick = tick;
 	}
 } world;
 
@@ -132,12 +152,12 @@ EXFUNC_SpriteMoveTo(void *, object_t func, int argc, object_t *argv)
 	int z = INT_UNBOX(argv[3]);
 	int l = INT_UNBOX(argv[4]);
 
-	node->mMotion->mXMotion.SetInterval(world.mLastTick, node->mMotion->mXMotion.Get(world.mLastTick),
-										world.mLastTick + l, x);
-	node->mMotion->mYMotion.SetInterval(world.mLastTick, node->mMotion->mYMotion.Get(world.mLastTick),
-										world.mLastTick + l, y);
-	node->mMotion->mZMotion.SetInterval(world.mLastTick, node->mMotion->mZMotion.Get(world.mLastTick),
-										world.mLastTick + l, z);
+	node->mMotion->mXMotion.SetInterval(world.mTick, node->mMotion->mXMotion.Get(world.mTick),
+										world.mTick + l, x);
+	node->mMotion->mYMotion.SetInterval(world.mTick, node->mMotion->mYMotion.Get(world.mTick),
+										world.mTick + l, y);
+	node->mMotion->mZMotion.SetInterval(world.mTick, node->mMotion->mZMotion.Get(world.mTick),
+										world.mTick + l, z);
 	return OBJECT_NULL;
 }
 
@@ -154,10 +174,12 @@ EXFUNC_SetViewPoint(void *, object_t func, int argc, object_t *argv)
 }
 
 static object_t
-EXFUNC_SetEventHandler(void *, object_t func, int argc, object_t *argv)
+EXFUNC_AddTickEvent(void *, object_t func, int argc, object_t *argv)
 {
-	object_t handler = argv[0];
-	SLOT_SET(world.mHandlerPair->pair.slot_car, handler);
+	int tick_delta = INT_UNBOX(argv[0]);
+	object_t handler = argv[1];
+
+	world.mTickEvent[world.mTick + tick_delta].push_back(handler);
 
 	return OBJECT_NULL;
 }
@@ -183,7 +205,7 @@ public:
 		world.mSE.ExternalFuncRegister("AddSpriteToMap", EXFUNC_AddSpriteToMap, NULL);
 		world.mSE.ExternalFuncRegister("SpriteMoveTo", EXFUNC_SpriteMoveTo, NULL);
 		world.mSE.ExternalFuncRegister("SetViewPoint", EXFUNC_SetViewPoint, NULL);
-		world.mSE.ExternalFuncRegister("SetEventHandler", EXFUNC_SetEventHandler, NULL);
+		world.mSE.ExternalFuncRegister("AddTickEvent", EXFUNC_AddTickEvent, NULL);
 		
 		object_t exret;
 		std::vector<object_t> excall;

@@ -33,6 +33,7 @@ namespace Game
 	public:
 		ScriptEngine(void);
 		void LoadScript(const char *name);
+		int Apply(object_t object, std::vector<object_t> *args, std::vector<object_t> *excall);
 		int Execute(object_t value, std::vector<object_t> *excall);
 		
 		object_t ObjectNew(void);

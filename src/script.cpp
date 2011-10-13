@@ -11,6 +11,7 @@ namespace Game
 	ScriptEngine::ScriptEngine(void)
 	{
 		mHeap = heap_new();
+		mEx = NULL;
 	}
 
 	ScriptEngine::~ScriptEngine(void)
@@ -68,9 +69,47 @@ namespace Game
 
 		expression_t e = expression_from_ast(mHeap, n);
 		mProg = continuation_from_expression(mHeap, e);
-		mEx = NULL;
 	}
 
+	int
+	ScriptEngine::Apply(object_t object, std::vector<object_t> *args, std::vector<object_t> *excall)
+	{
+		int r;
+		mProg = object;
+		while (1)
+		{
+			if (mProg)
+			{
+				r = vm_apply(mHeap, mProg, args->size(), args->empty() ? NULL : &((*args)[0]), &mRet, &mEx, &mExFunc, &mExArgc, &mExArgs);
+				mProg = NULL;
+			}
+			else
+			{
+				r = vm_apply(mHeap, OBJECT_NULL, 0, NULL, &mRet, &mEx, &mExFunc, &mExArgc, &mExArgs);
+			}
+
+			if (r != APPLY_EXTERNAL_CALL) break;
+			if (OBJECT_TYPE(mExFunc) != OBJECT_TYPE_STRING) break;
+			std::map<std::string, std::pair<external_function_t, void *> >::iterator
+				it = mExMap.find(xstring_cstr(mExFunc->string));
+			if (it == mExMap.end()) break;
+
+			mEx->value = it->second.first(it->second.second, mExFunc, mExArgc, mExArgs);
+		}
+
+		excall->clear();
+
+		if (r == APPLY_EXTERNAL_CALL)
+		{
+			excall->push_back(mExFunc);
+			int i;
+			for (i = 0; i < mExArgc; ++ i) excall->push_back(mExArgs[i]);
+		}
+		
+		return r;
+	}
+	
+						
 	int
 	ScriptEngine::Execute(object_t value, std::vector<object_t> *excall)
 	{
