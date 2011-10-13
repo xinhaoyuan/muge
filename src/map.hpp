@@ -7,6 +7,7 @@
 
 #include "sprite.hpp"
 #include "logic/object.hpp"
+#include "motion.hpp"
 
 namespace Game
 {
@@ -35,20 +36,36 @@ namespace Game
 		int mYIdx;
 		int mZIdx;
 
+		std::deque<TileNode *>::iterator mIt;
+
 		friend class TileMap;
 		friend class Map;
 
 	public:
 
+		class Motion
+		{
+			friend class TileMap;
+			friend class Map;
+		private:
+			bool mInitialized;
+			std::deque<TileNode *>::iterator mMotionIt;
+
+		public:
+			
+			Game::Motion mXMotion;
+			Game::Motion mYMotion;
+			Game::Motion mZMotion;			
+		} *mMotion;
+
+		TileNode(void) { mMotion = NULL; }
+		~TileNode(void) { if (mMotion) delete mMotion; }
+
 		Sprite *mSprite;
 
-		int mX;
-		int mY;
-		int mZ;
 
+		int mX, mY, mZ;
 		int mW, mH, mDX, mDY;
-		
-		std::deque<TileNode *>::iterator mIt;
 	};
 	
 	class TileMap
@@ -69,18 +86,20 @@ namespace Game
 	{
 	private:
 
+		std::deque<TileNode *> mMotionList;
 		TileMap    mTileMap;
 		MapSprite *mMapSprite;
-
 		MapTiles  *mMapTiles;
 
 	public:
 
-		TileNode *AddSprite(Sprite *sprite, int x, int y, int z, int w, int h, int dx, int dy);
+		TileNode *AddConstantSprite(Sprite *sprite, int x, int y, int z, int w, int h, int dx, int dy);
+		TileNode *AddMotiveSprite(Sprite *sprite, int w, int h, int dx, int dy);
 		void      UpdateSprite(TileNode *sprite);
 		void      RemoveSprite(TileNode *sprite);
 		
 		static Map *Load(const char *filename);
+		void UpdateMotion(GameEngine::tick_t tick);
 		void Show(GameEngine::tick_t tick, SDL_Surface *screen, SDL_Rect *rect, int x, int y, int w, int h);	
 		~Map(void);
 	};

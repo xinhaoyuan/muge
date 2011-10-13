@@ -2,6 +2,8 @@
 #define __SCRIPT_HPP__
 
 #include <vector>
+#include <map>
+#include <string>
 
 extern "C" {
 #include <see/object.h>
@@ -24,6 +26,9 @@ namespace Game
 		int       mExArgc;
 		object_t *mExArgs;
 		object_t  mRet;
+
+		typedef object_t(*external_function_t)(void *priv, object_t func, int argc, object_t *argv);
+		std::map<std::string, std::pair<external_function_t, void *> > mExMap;
 		
 	public:
 		ScriptEngine(void);
@@ -33,6 +38,8 @@ namespace Game
 		object_t ObjectNew(void);
 		void     ObjectProtect(object_t object);
 		void     ObjectUnprotect(object_t object);
+
+		void ExternalFuncRegister(const char *name, external_function_t func, void *priv);
 
 		~ScriptEngine(void);
 	};

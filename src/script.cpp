@@ -76,15 +76,39 @@ namespace Game
 	{
 		if (mEx)
 			mEx->value = value;
-		int r = vm_apply(mHeap, mProg, 0, NULL, &mRet, &mEx, &mExFunc, &mExArgc, &mExArgs);
-		mProg = NULL;
 		
-		excall->clear();
-		excall->push_back(mExFunc);
-		int i;
-		for (i = 0; i < mExArgc; ++ i) excall->push_back(mExArgs[i]);
+		int r;
+		while (1)
+		{
+			r = vm_apply(mHeap, mProg, 0, NULL, &mRet, &mEx, &mExFunc, &mExArgc, &mExArgs);
+			mProg = NULL;
 
+			if (r != APPLY_EXTERNAL_CALL) break;
+			if (OBJECT_TYPE(mExFunc) != OBJECT_TYPE_STRING) break;
+			std::map<std::string, std::pair<external_function_t, void *> >::iterator
+				it = mExMap.find(xstring_cstr(mExFunc->string));
+			if (it == mExMap.end()) break;
+
+			mEx->value = it->second.first(it->second.second, mExFunc, mExArgc, mExArgs);
+		}
+			
+		excall->clear();
+
+		if (r == APPLY_EXTERNAL_CALL)
+		{
+			excall->push_back(mExFunc);
+			int i;
+			for (i = 0; i < mExArgc; ++ i) excall->push_back(mExArgs[i]);
+		}
+		
 		return r;
+	}
+
+	void
+	ScriptEngine::ExternalFuncRegister(const char *name, external_function_t func, void *priv)
+	{
+		mExMap[name].first  = func;
+		mExMap[name].second = priv;
 	}
 
 	object_t

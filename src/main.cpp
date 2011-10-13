@@ -24,7 +24,8 @@ class Scene: public Drawable
 public:
 
 	ScriptEngine mSE;
-
+	object_t mHandlerPair;
+	
 	Map *mMap;
 	int mVPX, mVPY;
 	tick_t mLastTick;
@@ -43,6 +44,7 @@ public:
 	}
 
 	void Draw(tick_t tick, void *scene) {
+
 		SDL_Surface *screen = (SDL_Surface *)scene;
 		SDL_FillRect(screen, &screen->clip_rect, SDL_MapRGB(screen->format, 0, 0, 0));
 
@@ -50,11 +52,115 @@ public:
 
 		rect.x = 0;
 		rect.y = 0;
+		mMap->UpdateMotion(tick);
 		mMap->Show(tick, screen, &rect, mVPX, mVPY, 640, 480);
 
 		mLastTick = tick;
 	}
 } world;
+
+static object_t
+EXFUNC_SetCurrentMap(void *, object_t func, int argc, object_t *argv)
+{
+	world.SetMap((Map *)argv[0]->external.priv);
+	return OBJECT_NULL;
+}
+
+static object_t
+EXFUNC_GetSimpleSprite(void *, object_t func, int argc, object_t *argv)
+{
+	object_t result;
+	
+	result = world.mSE.ObjectNew();
+	result->external.priv = Resource::Get<SimpleSprite>(xstring_cstr(argv[0]->string));
+	result->external.enumerate = NULL;
+	result->external.free = NULL;
+	OBJECT_TYPE_INIT(result, OBJECT_TYPE_EXTERNAL);
+
+	return result;
+}
+
+static object_t
+EXFUNC_GetMap(void *, object_t func, int argc, object_t *argv)
+{
+	object_t result;
+	
+	result = world.mSE.ObjectNew();
+	result->external.priv = Resource::Get<Map>(xstring_cstr(argv[0]->string));
+	result->external.enumerate = NULL;
+	result->external.free = NULL;
+	OBJECT_TYPE_INIT(result, OBJECT_TYPE_EXTERNAL);
+
+	return result;
+}
+
+static object_t
+EXFUNC_AddSpriteToMap(void *, object_t func, int argc, object_t *argv)
+{
+	Map *map = (Map *)argv[0]->external.priv;
+	Sprite *sprite = (Sprite *)argv[1]->external.priv;
+	int x = INT_UNBOX(argv[2]);
+	int y = INT_UNBOX(argv[3]);
+	int z = INT_UNBOX(argv[4]);
+	int w = INT_UNBOX(argv[5]);
+	int h = INT_UNBOX(argv[6]);
+	int dx = INT_UNBOX(argv[7]);
+	int dy = INT_UNBOX(argv[8]);
+
+	object_t result = world.mSE.ObjectNew();
+	TileNode *node =
+		map->AddMotiveSprite(sprite, w, h, dx, dy);
+	result->external.priv = node;
+	
+	node->mMotion->mXMotion.SetConstant(x);
+	node->mMotion->mYMotion.SetConstant(y);
+	node->mMotion->mZMotion.SetConstant(z);
+	
+	result->external.enumerate = NULL;
+	result->external.free = NULL;
+	OBJECT_TYPE_INIT(result, OBJECT_TYPE_EXTERNAL);
+
+	return result;
+}
+
+static object_t
+EXFUNC_SpriteMoveTo(void *, object_t func, int argc, object_t *argv)
+{
+	TileNode *node = (TileNode *)argv[0]->external.priv;
+	int x = INT_UNBOX(argv[1]);
+	int y = INT_UNBOX(argv[2]);
+	int z = INT_UNBOX(argv[3]);
+	int l = INT_UNBOX(argv[4]);
+
+	node->mMotion->mXMotion.SetInterval(world.mLastTick, node->mMotion->mXMotion.Get(world.mLastTick),
+										world.mLastTick + l, x);
+	node->mMotion->mYMotion.SetInterval(world.mLastTick, node->mMotion->mYMotion.Get(world.mLastTick),
+										world.mLastTick + l, y);
+	node->mMotion->mZMotion.SetInterval(world.mLastTick, node->mMotion->mZMotion.Get(world.mLastTick),
+										world.mLastTick + l, z);
+	return OBJECT_NULL;
+}
+
+
+static object_t
+EXFUNC_SetViewPoint(void *, object_t func, int argc, object_t *argv)
+{
+	int x = INT_UNBOX(argv[0]);
+	int y = INT_UNBOX(argv[1]);
+
+	world.SetViewPoint(x, y);
+
+	return OBJECT_NULL;
+}
+
+static object_t
+EXFUNC_SetEventHandler(void *, object_t func, int argc, object_t *argv)
+{
+	object_t handler = argv[0];
+	SLOT_SET(world.mHandlerPair->pair.slot_car, handler);
+
+	return OBJECT_NULL;
+}
 
 class : public Event
 {
@@ -64,8 +170,21 @@ public:
 		SDL_WM_SetCaption("GAME", NULL);
 		SDL_keystate = SDL_GetKeyState(NULL);
 
+		world.mHandlerPair = world.mSE.ObjectNew();
+		SLOT_SET(world.mHandlerPair->pair.slot_car, OBJECT_NULL);
+		SLOT_SET(world.mHandlerPair->pair.slot_cdr, OBJECT_NULL);
+		OBJECT_TYPE_INIT(world.mHandlerPair, OBJECT_TYPE_PAIR);
+		
 		world.mSE.LoadScript("script/test");
-	
+		
+		world.mSE.ExternalFuncRegister("SetCurrentMap", EXFUNC_SetCurrentMap, NULL);
+		world.mSE.ExternalFuncRegister("GetSimpleSprite", EXFUNC_GetSimpleSprite, NULL);
+		world.mSE.ExternalFuncRegister("GetMap", EXFUNC_GetMap, NULL);
+		world.mSE.ExternalFuncRegister("AddSpriteToMap", EXFUNC_AddSpriteToMap, NULL);
+		world.mSE.ExternalFuncRegister("SpriteMoveTo", EXFUNC_SpriteMoveTo, NULL);
+		world.mSE.ExternalFuncRegister("SetViewPoint", EXFUNC_SetViewPoint, NULL);
+		world.mSE.ExternalFuncRegister("SetEventHandler", EXFUNC_SetEventHandler, NULL);
+		
 		object_t exret;
 		std::vector<object_t> excall;
 		while (1)
@@ -73,59 +192,10 @@ public:
 			int r = world.mSE.Execute(exret, &excall);
 			if (r == APPLY_EXIT || r == APPLY_EXIT_NO_VALUE)
 				break;
-			/* An example for handling external calls: display */
+
 			if (r == APPLY_EXTERNAL_CALL)
 			{
-				if (xstring_equal_cstr(excall[0]->string, "SetCurrentMap", -1))
-				{
-					world.SetMap((Map *)excall[1]->external.priv);
-					exret = OBJECT_NULL;
-				}
-				else if (xstring_equal_cstr(excall[0]->string, "GetSimpleSprite", -1))
-				{
-					exret = world.mSE.ObjectNew();
-					exret->external.priv = Resource::Get<SimpleSprite>(xstring_cstr(excall[1]->string));
-					exret->external.enumerate = NULL;
-					exret->external.free = NULL;
-					OBJECT_TYPE_INIT(exret, OBJECT_TYPE_EXTERNAL);
-				}
-				else if (xstring_equal_cstr(excall[0]->string, "GetMap", -1))
-				{
-					exret = world.mSE.ObjectNew();
-					exret->external.priv = Resource::Get<Map>(xstring_cstr(excall[1]->string));
-					exret->external.enumerate = NULL;
-					exret->external.free = NULL;
-					OBJECT_TYPE_INIT(exret, OBJECT_TYPE_EXTERNAL);
-				}
-				else if (xstring_equal_cstr(excall[0]->string, "AddSpriteToMap", -1))
-				{
-					Map *map = (Map *)excall[1]->external.priv;
-					Sprite *sprite = (Sprite *)excall[2]->external.priv;
-					int x = INT_UNBOX(excall[3]);
-					int y = INT_UNBOX(excall[4]);
-					int z = INT_UNBOX(excall[5]);
-					int w = INT_UNBOX(excall[6]);
-					int h = INT_UNBOX(excall[7]);
-					int dx = INT_UNBOX(excall[8]);
-					int dy = INT_UNBOX(excall[9]);
-
-					exret = world.mSE.ObjectNew();
-					exret->external.priv = map->AddSprite(sprite, x, y, z, w, h, dx, dy);
-					exret->external.enumerate = NULL;
-					exret->external.free = NULL;
-					OBJECT_TYPE_INIT(exret, OBJECT_TYPE_EXTERNAL);
-				}
-				else if (xstring_equal_cstr(excall[0]->string, "SetViewPoint", -1))
-				{
-					int x = INT_UNBOX(excall[1]);
-					int y = INT_UNBOX(excall[2]);
-
-					world.SetViewPoint(x, y);
-
-					exret = OBJECT_NULL;
-				}
-
-				else exret = OBJECT_NULL;
+				exret = OBJECT_NULL;
 			}
 		}
 

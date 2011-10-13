@@ -117,7 +117,8 @@ namespace Game
 
 					while (_it != itX->second.end())
 					{
-						delete *_it;
+						TileNode *node = *_it;
+						delete node;
 						++ _it;
 					}
 
@@ -140,7 +141,7 @@ namespace Game
 	}
 
 	TileNode *
-	Map::AddSprite(Sprite *sprite, int x, int y, int z, int w, int h, int dx, int dy)
+	Map::AddConstantSprite(Sprite *sprite, int x, int y, int z, int w, int h, int dx, int dy)
 	{
 		TileNode *node = new TileNode;
 		node->mSprite = sprite;
@@ -148,6 +149,8 @@ namespace Game
 		node->mX = x;
 		node->mY = y;
 		node->mZ = z;
+
+		node->mMotion = NULL;
 		
 		node->mW = w;
 		node->mH = h;
@@ -164,18 +167,51 @@ namespace Game
 		return node;
 	}
 
+	TileNode *
+	Map::AddMotiveSprite(Sprite *sprite, int w, int h, int dx, int dy)
+	{
+		TileNode *node = new TileNode;
+		node->mSprite = sprite;
+
+		node->mMotion = new TileNode::Motion;
+		node->mMotion->mInitialized = false;
+		node->mMotion->mMotionIt = mMotionList.insert(mMotionList.end(), node);
+		
+		node->mW = w;
+		node->mH = h;
+
+		node->mDX = dx;
+		node->mDY = dy;
+		
+		return node;
+	}
+
 	void
 	Map::UpdateSprite(TileNode *node)
 	{
-		std::deque<TileNode *> *q = mTileMap.Get(node->mXIdx, node->mYIdx, node->mZIdx);
-		q->erase(node->mIt);
+		int xIdx = DivDown(node->mX + node->mDX - 1, mMapTiles->mWidth);
+		int yIdx = DivDown(node->mY + node->mDY - node->mZ - 1, mMapTiles->mHeight);
+		int zIdx = DivDown(node->mZ, mMapTiles->mLHeight);
 
-		if (q->empty())
-			mTileMap.Remove(node->mXIdx, node->mYIdx, node->mZIdx);
+		std::deque<TileNode *> *q;
+		
+		if (!node->mMotion ||
+			node->mMotion->mInitialized)
+		{
+			if (xIdx == node->mXIdx &&
+				yIdx == node->mYIdx &&
+				zIdx == node->mZIdx) return;
+			
+			q = mTileMap.Get(node->mXIdx, node->mYIdx, node->mZIdx);
+			q->erase(node->mIt);
+			
+			if (q->empty())
+				mTileMap.Remove(node->mXIdx, node->mYIdx, node->mZIdx);
+		}
 
-		node->mXIdx = DivDown(node->mX + node->mDX - 1, mMapTiles->mWidth);
-		node->mYIdx = DivDown(node->mY + node->mDY - node->mZ - 1, mMapTiles->mHeight);
-		node->mZIdx = DivDown(node->mZ, mMapTiles->mLHeight);
+		node->mXIdx = xIdx;
+		node->mYIdx = yIdx;
+		node->mZIdx = zIdx;
 		
 		q = mTileMap.Touch(node->mXIdx, node->mYIdx, node->mZIdx);
 		node->mIt = q->insert(q->end(), node);
@@ -189,6 +225,11 @@ namespace Game
 
 		if (q->empty())
 			mTileMap.Remove(node->mXIdx, node->mYIdx, node->mZIdx);
+
+		if (node->mMotion)
+		{
+			mMotionList.erase(node->mMotion->mMotionIt);
+		}
 
 		delete node;
 	}
@@ -220,13 +261,14 @@ namespace Game
 					fin >> id;
 
 					result->mMapSprite[c].Set(id, result->mMapTiles);
-					result->AddSprite(&result->mMapSprite[c],
+					result->AddConstantSprite(&result->mMapSprite[c],
 									  i * result->mMapTiles->mWidth,
 									  j * result->mMapTiles->mHeight,
-									  (d - 1) * result->mMapTiles->mLHeight,
+									  (d - 2) * result->mMapTiles->mLHeight,
 									  result->mMapTiles->mWidth,
 									  result->mMapTiles->mHeight + result->mMapTiles->mLHeight,
-									  result->mMapTiles->mWidth - 1, result->mMapTiles->mHeight - 1);
+									  result->mMapTiles->mWidth - 1,
+									  result->mMapTiles->mHeight + result->mMapTiles->mLHeight - 1);
 					
 					c ++;
 					d --;
@@ -237,6 +279,23 @@ namespace Game
 		return result;
 	}
 
+	void
+	Map::UpdateMotion(GameEngine::tick_t tick)
+	{
+		std::deque<TileNode *>::iterator it = mMotionList.begin();
+		while (it != mMotionList.end())
+		{
+			TileNode *node = *it;
+			node->mX = node->mMotion->mXMotion.Get(tick);
+			node->mY = node->mMotion->mYMotion.Get(tick);
+			node->mZ = node->mMotion->mZMotion.Get(tick);
+
+			UpdateSprite(node);
+
+			++ it;
+		}
+	}
+	
 	void
 	Map::Show(GameEngine::tick_t tick, SDL_Surface *screen, SDL_Rect *rect, int x, int y, int w, int h)
 	{
