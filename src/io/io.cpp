@@ -74,6 +74,8 @@ namespace GameEngine
 	void
 	IO::Thread(void)
 	{
+		SDL_Init(SDL_INIT_EVERYTHING);
+		TTF_Init();
 		sDisplay = SDL_SetVideoMode(sScreenWidth, sScreenHeight, sScreenBPP,
 									SDL_HWSURFACE | SDL_DOUBLEBUF | (sFullScreen ? SDL_FULLSCREEN : 0));
 		EventLoop::sMain.Enqueue(sInitEvent);

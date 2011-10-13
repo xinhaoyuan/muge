@@ -13,6 +13,7 @@
 #include "map.hpp"
 #include "resource.hpp"
 #include "script.hpp"
+#include "conv.hpp"
 
 using namespace GameEngine;
 using namespace Game;
@@ -29,6 +30,8 @@ public:
 	Map *mMap;
 	int mVPX, mVPY;
 	tick_t mTick;
+
+	Conversation *conv;
 
 	std::map<tick_t, std::deque<object_t> > mTickEvent;
 
@@ -79,6 +82,8 @@ public:
 		rect.y = 0;
 		mMap->UpdateMotion(tick);
 		mMap->Show(tick, screen, &rect, mVPX, mVPY, 640, 480);
+
+		conv->Show(tick, screen, &rect);
 	}
 } world;
 
@@ -230,6 +235,9 @@ public:
 			}
 		}
 
+		world.conv = Resource::Get<Conversation>("data/conv1");
+		world.conv->SetPage(0);
+		
 		IO::Open();
 	}
 } initEvent;

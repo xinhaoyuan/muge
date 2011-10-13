@@ -5,6 +5,7 @@
 #include "../logic/timer.hpp"
 
 #include <SDL/SDL.h>
+#include <SDL/SDL_ttf.h>
 #include <thread>
 
 namespace GameEngine

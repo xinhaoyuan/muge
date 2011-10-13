@@ -8,7 +8,7 @@ T_BASE   = target
 T_FLAGS_OPT  ?= -O0 -g
 T_CXX_FLAGS  ?= $(shell sdl-config --cflags) ${T_FLAGS_OPT} -I/home/xinhaoyuan/include -std=c++0x -D__LINUX__
 T_CC_FLAGS   ?= $(shell sdl-config --cflags) ${T_FLAGS_OPT} -I/home/xinhaoyuan/include -std=c99   -D__LINUX__
-T_LINK_FLAGS ?= $(shell sdl-config --libs) -lpthread -g /home/xinhaoyuan/see/target/see.a
+T_LINK_FLAGS ?= $(shell sdl-config --libs) -lpthread -g /home/xinhaoyuan/see/target/see.a -lSDL_ttf
 
 SRCFILES:= $(shell find src '(' '!' -regex '^\./_.*' ')' -and '(' -iname "*.cpp" -or -iname "*.c" ')' | sed -e 's!\./!!g')
 OBJFILES:= $(addprefix ${T_BASE}/,$(addsuffix .o,$(foreach FILE,${SRCFILES},$(call E_ENCODE,${FILE}))))
