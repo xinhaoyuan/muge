@@ -206,7 +206,7 @@ public:
 		SLOT_SET(world.mHandlerPair->pair.slot_cdr, OBJECT_NULL);
 		OBJECT_TYPE_INIT(world.mHandlerPair, OBJECT_TYPE_PAIR);
 		
-		world.mSE.LoadScript("script/test");
+		world.mSE.LoadScript("script/test.ss");
 		
 		world.mSE.ExternalFuncRegister("SetCurrentMap", EXFUNC_SetCurrentMap, NULL);
 		world.mSE.ExternalFuncRegister("GetSimpleSprite", EXFUNC_GetSimpleSprite, NULL);
