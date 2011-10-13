@@ -58,7 +58,7 @@ namespace GameEngine
 
 	TimerPool::TimerPool(tick_t startTick, int hz)
 	{
-		mTick = startTick;
+		mLastTick = mTick = startTick;
 		mHZ = hz;
 		mThread = NULL;
 
@@ -238,7 +238,6 @@ namespace GameEngine
 			((double)mHZ * std::chrono::system_clock::period::num
 			 / std::chrono::system_clock::period::den);
 		mLock.unlock();
-
 		return tick;
 	}
 };

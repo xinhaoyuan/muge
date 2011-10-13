@@ -188,7 +188,7 @@ namespace Game
 
 	void
 	Map::UpdateSprite(TileNode *node)
-	{
+	{   	
 		int xIdx = DivDown(node->mX + node->mDX - 1, mMapTiles->mWidth);
 		int yIdx = DivDown(node->mY + node->mDY - node->mZ - 1, mMapTiles->mHeight);
 		int zIdx = DivDown(node->mZ, mMapTiles->mLHeight);
@@ -215,6 +215,9 @@ namespace Game
 		
 		q = mTileMap.Touch(node->mXIdx, node->mYIdx, node->mZIdx);
 		node->mIt = q->insert(q->end(), node);
+
+		if (node->mMotion)
+			node->mMotion->mInitialized = true;
 	}
 
 	void
@@ -286,10 +289,11 @@ namespace Game
 		while (it != mMotionList.end())
 		{
 			TileNode *node = *it;
+
 			node->mX = node->mMotion->mXMotion.Get(tick);
 			node->mY = node->mMotion->mYMotion.Get(tick);
 			node->mZ = node->mMotion->mZMotion.Get(tick);
-
+			
 			UpdateSprite(node);
 
 			++ it;
@@ -323,6 +327,7 @@ namespace Game
 					while (_it != itX->second.end())
 					{
 						TileNode *node = *_it;
+
 						++ _it;
 						
 						if (node->mX >= x + w            ||

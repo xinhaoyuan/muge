@@ -60,7 +60,10 @@ public:
 			std::deque<object_t>::iterator _it = q->begin();
 			while (_it != q->end())
 			{
-				mSE.Apply(*_it, &eventArgs, &excall);
+				object_t container = *_it;
+				mSE.Apply(SLOT_GET(container->pair.slot_car), &eventArgs, &excall);
+				mSE.ObjectUnprotect(container);
+
 				++ _it;
 			}
 
@@ -158,6 +161,7 @@ EXFUNC_SpriteMoveTo(void *, object_t func, int argc, object_t *argv)
 										world.mTick + l, y);
 	node->mMotion->mZMotion.SetInterval(world.mTick, node->mMotion->mZMotion.Get(world.mTick),
 										world.mTick + l, z);
+
 	return OBJECT_NULL;
 }
 
@@ -179,7 +183,12 @@ EXFUNC_AddTickEvent(void *, object_t func, int argc, object_t *argv)
 	int tick_delta = INT_UNBOX(argv[0]);
 	object_t handler = argv[1];
 
-	world.mTickEvent[world.mTick + tick_delta].push_back(handler);
+	object_t container = world.mSE.ObjectNew();
+	SLOT_SET(container->pair.slot_car, handler);
+	SLOT_SET(container->pair.slot_cdr, OBJECT_NULL);
+	OBJECT_TYPE_INIT(container, OBJECT_TYPE_PAIR);
+	
+	world.mTickEvent[world.mTick + tick_delta].push_back(container);
 
 	return OBJECT_NULL;
 }

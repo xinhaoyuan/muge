@@ -64,9 +64,9 @@ namespace GameEngine
 		sTimerPool = new TimerPool(0, sRefreshHZ);
 		sDrawTimer.SetEventLoop(&EventLoop::sMain);
 		sDrawTimer.SetEvent(&sDrawEvent);
-		sDrawTimer.SetTick(0);
+		sDrawTimer.SetTick(1);
 		sDrawTimer.Open(sTimerPool);
-			
+
 		sTimerPool->Start();
 		sTimerPool->Resume();
 	}

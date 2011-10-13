@@ -48,11 +48,10 @@ namespace Game
 			friend class TileMap;
 			friend class Map;
 		private:
-			bool mInitialized;
 			std::deque<TileNode *>::iterator mMotionIt;
 
 		public:
-			
+			bool mInitialized;			
 			Game::Motion mXMotion;
 			Game::Motion mYMotion;
 			Game::Motion mZMotion;			
@@ -87,12 +86,13 @@ namespace Game
 	private:
 
 		std::deque<TileNode *> mMotionList;
-		TileMap    mTileMap;
 		MapSprite *mMapSprite;
 		MapTiles  *mMapTiles;
 
 	public:
 
+		TileMap    mTileMap;
+		
 		TileNode *AddConstantSprite(Sprite *sprite, int x, int y, int z, int w, int h, int dx, int dy);
 		TileNode *AddMotiveSprite(Sprite *sprite, int w, int h, int dx, int dy);
 		void      UpdateSprite(TileNode *sprite);
