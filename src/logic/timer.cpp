@@ -9,6 +9,7 @@ namespace GameEngine
 		mNode.key  = 0;
 		mEvent     = Event::sDummy;
 		mEventLoop = &EventLoop::sMain;
+		mPool      = NULL;
 	}
 
 	Timer::Timer(tick_t tick, EventLoop *eventLoop, Event *event)
@@ -16,6 +17,7 @@ namespace GameEngine
 		mNode.key = tick;
 		mEventLoop = eventLoop;
 		mEvent = event;
+		mPool = NULL;
 	}
 
 	void
@@ -56,7 +58,19 @@ namespace GameEngine
 		return mPool == NULL;
 	}
 
-	TimerPool::TimerPool(tick_t startTick, int hz)
+	void
+	Timer::Lock(void)
+	{
+		mLock.lock();
+	}
+
+	void
+	Timer::Unlock(void)
+	{
+		mLock.unlock();
+	}
+
+	ThreadedTimerPool::ThreadedTimerPool(tick_t startTick, int hz)
 	{
 		mLastTick = mTick = startTick;
 		mHZ = hz;
@@ -66,16 +80,16 @@ namespace GameEngine
 		crh_set_base(&mCRH, startTick);
 	}
 
-	TimerPool::~TimerPool(void)
+	ThreadedTimerPool::~ThreadedTimerPool(void)
 	{
 		Stop();
 	}
 
 	void
-	TimerPool::Enqueue(Timer *timer)
+	ThreadedTimerPool::Enqueue(Timer *timer)
 	{
 		mLock.lock();
-		timer->mLock.lock();
+		timer->Lock();
 
 		if (timer->mPool == NULL)
 		{
@@ -87,16 +101,16 @@ namespace GameEngine
 			else timer->mPool = this;
 		}
 		
-		timer->mLock.unlock();
+		timer->Unlock();
 		mLock.unlock();
 		mEventCV.notify_one();
 	}
 
 	void
-	TimerPool::Dequeue(Timer *timer)
+	ThreadedTimerPool::Dequeue(Timer *timer)
 	{
 		mLock.lock();
-		timer->mLock.lock();
+		timer->Lock();
 
 		if (timer->mPool == this)
 		{
@@ -104,7 +118,7 @@ namespace GameEngine
 			timer->mPool = NULL;
 		}
 		
-		timer->mLock.unlock();
+		timer->Unlock();
 		mLock.unlock();
 	}
 
@@ -115,7 +129,7 @@ namespace GameEngine
 	}
 	
 	void
-	TimerPool::Start(void)
+	ThreadedTimerPool::Start(void)
 	{
 		mThreadExit = false;
 		mThreadPause = true;
@@ -124,7 +138,7 @@ namespace GameEngine
 	}
 
 	void
-	TimerPool::Stop(void)
+	ThreadedTimerPool::Stop(void)
 	{
 		mThreadExit = true;
 		Pause();
@@ -135,21 +149,21 @@ namespace GameEngine
 	}
 
 	void
-	TimerPool::Pause(void)
+	ThreadedTimerPool::Pause(void)
 	{
 		mThreadPause = true;
 		mEventCV.notify_one();
 	}
 	
 	void
-	TimerPool::Resume(void)
+	ThreadedTimerPool::Resume(void)
 	{
 		mThreadPause = false;
 		mEventCV.notify_one();
 	}
 
 	void
-	TimerPool::DoThread()
+	ThreadedTimerPool::DoThread()
 	{
 		mLock.lock();
 		
@@ -189,7 +203,7 @@ namespace GameEngine
 					{
 						Timer *timer = (Timer *)((uintptr_t)cur - (uintptr_t)(&((Timer *)0)->mNode));
 
-						timer->mLock.lock();
+						timer->Lock();
 						crh_remove(&mCRH, &timer->mNode);
 						timer->mPool = NULL;
 						if (timer->mEventLoop)
@@ -199,17 +213,17 @@ namespace GameEngine
 						cur->prev->next = cur->next;
 						if (cur == cur->next)
 						{
-							timer->mLock.unlock();
+							timer->Unlock();
 							break;
 						}
 						else
 						{
 							cur = cur->next;
-							timer->mLock.unlock();
+							timer->Unlock();
 						}
 					}
 				};
-
+				
 				tick_t waitTick = crh_max_step(&mCRH);
 				if (waitTick == 0) waitTick = mHZ;
 				waitTick = (mTick - mLastTick + waitTick) / (double)mHZ
@@ -230,14 +244,131 @@ namespace GameEngine
 	}
 
 	tick_t
-	TimerPool::GetTick(void)
+	ThreadedTimerPool::GetTick(void)
 	{
+		tick_t tick;
 		mLock.lock();
-		tick_t tick = mLastTick +
-			(std::chrono::system_clock::now() - mLastTime).count() *
-			((double)mHZ * std::chrono::system_clock::period::num
-			 / std::chrono::system_clock::period::den);
+		if (mThreadPause)
+		{
+			tick = mTick;
+		}
+		else
+		{
+			tick = mLastTick +
+				(std::chrono::system_clock::now() - mLastTime).count() *
+				((double)mHZ * std::chrono::system_clock::period::num
+				 / std::chrono::system_clock::period::den);
+		}
 		mLock.unlock();
 		return tick;
+	}
+
+	MonoTimerPool::MonoTimerPool(void)
+	{
+		mTick = 0;
+		crh_init(&mCRH);
+		crh_set_base(&mCRH, mTick);
+	}
+
+
+	MonoTimerPool::MonoTimerPool(tick_t startTick)
+	{
+		mTick = startTick;
+		crh_init(&mCRH);
+		crh_set_base(&mCRH, mTick);
+	}
+
+	MonoTimerPool::~MonoTimerPool(void)
+	{
+	}
+
+	void
+	MonoTimerPool::Enqueue(Timer *timer)
+	{
+		timer->Lock();
+		if (timer->mPool == NULL)
+		{
+			if (crh_insert(&mCRH, &timer->mNode))
+			{
+				Event *event = timer->mEvent;
+				timer->Unlock();
+				
+				event->Activate();
+				return;
+			}
+			else timer->mPool = this;
+		}		
+		timer->Unlock();
+	}
+
+	void
+	MonoTimerPool::Dequeue(Timer *timer)
+	{
+		timer->Lock();
+		if (timer->mPool == this)
+		{
+			crh_remove(&mCRH, &timer->mNode);
+			timer->mPool = NULL;
+		}
+		timer->Unlock();
+	}
+
+	void
+	MonoTimerPool::SetTick(tick_t tick)
+	{
+		tick_t tickDelta = tick - mTick;
+		while (tickDelta)
+		{
+			tick_t step = crh_max_step(&mCRH);
+			if (step > tickDelta || step == 0)
+			{
+				step = tickDelta;
+				mTick += step;
+				crh_set_base(&mCRH, mTick);
+						
+				break;
+			}
+
+			mTick += step;
+			tickDelta -= step;
+			crh_node_t node = crh_set_base(&mCRH, mTick);
+
+			if (node == NULL) continue;
+
+			crh_node_t cur = node;
+			while (1)
+			{
+				Timer *timer = (Timer *)((uintptr_t)cur - (uintptr_t)(&((Timer *)0)->mNode));
+
+				timer->Lock();
+				crh_remove(&mCRH, &timer->mNode);
+				timer->mPool = NULL;
+				Event *event = timer->mEvent;
+
+				cur->next->prev = cur->prev;
+				cur->prev->next = cur->next;
+				if (cur == cur->next)
+				{
+					timer->Unlock();
+					event->Activate();
+					break;
+				}
+				else
+				{
+					cur = cur->next;
+					timer->Unlock();
+					event->Activate();
+				}
+			}
+		}
+
+		mTick = tick;
+		crh_set_base(&mCRH, mTick);
+	}
+
+	tick_t
+	MonoTimerPool::GetTick(void)
+	{
+		return mTick;
 	}
 };

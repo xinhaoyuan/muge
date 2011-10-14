@@ -20,8 +20,9 @@ namespace GameEngine
 	class Timer
 	{
 	private:
-		friend class TimerPool;
-
+		friend class ThreadedTimerPool;
+		friend class MonoTimerPool;
+		
 		crh_node_s mNode;
 
 		std::mutex mLock;
@@ -37,25 +38,37 @@ namespace GameEngine
 		void SetEventLoop(EventLoop *eventLoop);
 		void SetTick(tick_t tick);
 
+		void Lock(void);
+		void Unlock(void);
+
 		void Open(TimerPool *pool);
 		void Close(void);
 		bool IsClosed(void);
 	};
 
+	class ThreadedTimerPool;
+	
 	class TimerThreadHelper
 	{
 	private:
-		TimerPool *mPool;
+		ThreadedTimerPool *mPool;
 		
 	public:
-		inline TimerThreadHelper(TimerPool *pool) : mPool(pool) { };
+		inline TimerThreadHelper(ThreadedTimerPool *pool) : mPool(pool) { };
 		void operator()(void);
 	};
-	
+
 	class TimerPool
 	{
-	private:
-		friend class Timer;
+	public:
+		virtual void Enqueue(Timer *timer) = 0;
+		virtual void Dequeue(Timer *timer) = 0;
+		virtual tick_t GetTick(void) = 0;
+	};
+	
+	class ThreadedTimerPool : public TimerPool
+	{
+	private :
 		friend class TimerThreadHelper;
 
 		int mHZ;
@@ -70,15 +83,15 @@ namespace GameEngine
 
 		crh_s mCRH;
 
-		void DoThread(void);
-
-		void Enqueue(Timer *timer);
-		void Dequeue(Timer *timer);
-		
+		void DoThread(void);		
 	public:
 
-		TimerPool(tick_t startTick, int hz);
-		~TimerPool(void);
+		virtual void Enqueue(Timer *timer);
+		virtual void Dequeue(Timer *timer);
+
+
+		ThreadedTimerPool(tick_t startTick, int hz);
+		~ThreadedTimerPool(void);
 
 		void Start(void);
 		void Stop(void);
@@ -86,7 +99,25 @@ namespace GameEngine
 		void Pause(void);
 		void Resume(void);
 		
-		tick_t GetTick(void);
+		virtual tick_t GetTick(void);
+	};
+
+	class MonoTimerPool : public TimerPool
+	{
+		tick_t mTick;
+		crh_s mCRH;
+		
+	public:
+
+		MonoTimerPool(void);
+		MonoTimerPool(tick_t startTick);
+		~MonoTimerPool(void);
+		
+		virtual void Enqueue(Timer *timer);
+		virtual void Dequeue(Timer *timer);
+		
+		virtual tick_t GetTick(void);
+		void    SetTick(tick_t tick);
 	};
 }
 

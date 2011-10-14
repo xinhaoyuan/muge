@@ -28,7 +28,7 @@ namespace GameEngine
 		static Drawable    *sRootDrawable;
 		static SDL_Surface *sDisplay;
 
-		static TimerPool *sTimerPool;
+		static ThreadedTimerPool *sTimerPool;
 		static Timer      sDrawTimer;
 		static DrawEvent  sDrawEvent;
 

@@ -29,13 +29,24 @@ public:
 	
 	Map *mMap;
 	int mVPX, mVPY;
-	tick_t mTick;
+	
+	Conversation *mConv;
 
-	Conversation *conv;
+#define TIMER_COUNT 16
+#define TIMER_MAP   0
+	
+	tick_t        mTick[TIMER_COUNT];
+	bool          mTimerPause[TIMER_COUNT];
+	MonoTimerPool mTimer[TIMER_COUNT];
 
-	std::map<tick_t, std::deque<object_t> > mTickEvent;
-
-	Scene() { mTick = 0; }
+	Scene() {
+		int i;
+		for (i = 0; i < TIMER_COUNT; ++ i)
+		{
+			mTick[i] = 0;
+			mTimerPause[i] = true;
+		}
+	}
 
 	void
 	SetMap(Map *map) {
@@ -50,47 +61,62 @@ public:
 
 	void Draw(tick_t tick, void *scene) {
 
-		std::vector<object_t> eventArgs;
-		std::vector<object_t> excall;
-		std::map<tick_t, std::deque<object_t> >::iterator b;
-		
-		while (((b = mTickEvent.begin()) != mTickEvent.end()) &&
-			   (b->first <= tick))
+		int i;
+		for (i = 0; i < TIMER_COUNT; ++ i)
 		{
-			mTick = b->first;
-
-			std::deque<object_t> *q = &b->second;
-			std::deque<object_t>::iterator _it = q->begin();
-			while (_it != q->end())
+			if (!mTimerPause[i])
 			{
-				object_t container = *_it;
-				mSE.Apply(SLOT_GET(container->pair.slot_car), &eventArgs, &excall);
-				mSE.ObjectUnprotect(container);
-
-				++ _it;
+				mTick[i] = mTimer[i].GetTick() + 1;
+				mTimer[i].SetTick(mTick[i]);
 			}
-
-			mTickEvent.erase(b);
 		}
 		
 		SDL_Surface *screen = (SDL_Surface *)scene;
 		SDL_FillRect(screen, &screen->clip_rect, SDL_MapRGB(screen->format, 0, 0, 0));
 
 		SDL_Rect rect;
+		
+		if (mMap)
+		{
+			rect.x = 0;
+			rect.y = 0;
+			mMap->UpdateMotion(mTick[TIMER_MAP]);
+			mMap->Show(tick, screen, &rect, mVPX, mVPY, 640, 480);
+		}
 
-		rect.x = 0;
-		rect.y = 0;
-		mMap->UpdateMotion(tick);
-		mMap->Show(tick, screen, &rect, mVPX, mVPY, 640, 480);
-
-		conv->Show(tick, screen, &rect);
+		if (mConv)
+		{
+			mConv->Show(tick, screen, &rect);
+		}
 	}
 } world;
+
+class SEETimerEvent : public Event
+{
+public:
+	object_t mContainer;
+	Timer   *mTimer;
+	
+	virtual void Activate(void) {
+
+		static std::vector<object_t> args;
+		static std::vector<object_t> excall;
+
+		args.clear();
+		world.mSE.Apply(SLOT_GET(mContainer->pair.slot_car), &args, &excall);
+		world.mSE.ObjectUnprotect(mContainer);
+						
+		delete mTimer;
+		delete this;
+	}
+};
 
 static object_t
 EXFUNC_SetCurrentMap(void *, object_t func, int argc, object_t *argv)
 {
-	world.SetMap((Map *)argv[0]->external.priv);
+	if (argv[0] == OBJECT_NULL)
+		world.SetMap(NULL);
+	else world.SetMap((Map *)argv[0]->external.priv);
 	return OBJECT_NULL;
 }
 
@@ -160,12 +186,12 @@ EXFUNC_SpriteMoveTo(void *, object_t func, int argc, object_t *argv)
 	int z = INT_UNBOX(argv[3]);
 	int l = INT_UNBOX(argv[4]);
 
-	node->mMotion->mXMotion.SetInterval(world.mTick, node->mMotion->mXMotion.Get(world.mTick),
-										world.mTick + l, x);
-	node->mMotion->mYMotion.SetInterval(world.mTick, node->mMotion->mYMotion.Get(world.mTick),
-										world.mTick + l, y);
-	node->mMotion->mZMotion.SetInterval(world.mTick, node->mMotion->mZMotion.Get(world.mTick),
-										world.mTick + l, z);
+	node->mMotion->mXMotion.SetInterval(world.mTick[TIMER_MAP], node->mMotion->mXMotion.Get(world.mTick[TIMER_MAP]),
+										world.mTick[TIMER_MAP] + l, x);
+	node->mMotion->mYMotion.SetInterval(world.mTick[TIMER_MAP], node->mMotion->mYMotion.Get(world.mTick[TIMER_MAP]),
+										world.mTick[TIMER_MAP] + l, y);
+	node->mMotion->mZMotion.SetInterval(world.mTick[TIMER_MAP], node->mMotion->mZMotion.Get(world.mTick[TIMER_MAP]),
+										world.mTick[TIMER_MAP] + l, z);
 
 	return OBJECT_NULL;
 }
@@ -183,19 +209,74 @@ EXFUNC_SetViewPoint(void *, object_t func, int argc, object_t *argv)
 }
 
 static object_t
-EXFUNC_AddTickEvent(void *, object_t func, int argc, object_t *argv)
+EXFUNC_AddDelayEvent(void *, object_t func, int argc, object_t *argv)
 {
-	int tick_delta = INT_UNBOX(argv[0]);
-	object_t handler = argv[1];
+	int tick_idx = INT_UNBOX(argv[0]);
+	int delay = INT_UNBOX(argv[1]);
+	object_t handler = argv[2];
 
 	object_t container = world.mSE.ObjectNew();
 	SLOT_SET(container->pair.slot_car, handler);
 	SLOT_SET(container->pair.slot_cdr, OBJECT_NULL);
 	OBJECT_TYPE_INIT(container, OBJECT_TYPE_PAIR);
-	
-	world.mTickEvent[world.mTick + tick_delta].push_back(container);
+
+	SEETimerEvent *event = new SEETimerEvent;
+	event->mContainer = container;
+	event->mTimer = new Timer(world.mTick[tick_idx] + delay, NULL, event);
+	event->mTimer->Open(&world.mTimer[tick_idx]);
 
 	return OBJECT_NULL;
+}
+
+static object_t
+EXFUNC_PauseTimer(void *, object_t func, int argc, object_t *argv)
+{
+	int tick_idx = INT_UNBOX(argv[0]);
+	world.mTimerPause[tick_idx] = true;
+	return OBJECT_NULL;
+}
+
+static object_t
+EXFUNC_ResumeTimer(void *, object_t func, int argc, object_t *argv)
+{
+	int tick_idx = INT_UNBOX(argv[0]);
+	world.mTimerPause[tick_idx] = false;
+	return OBJECT_NULL;
+}
+
+static object_t
+EXFUNC_SetCurrentConversation(void *, object_t func, int argc, object_t *argv)
+{
+	if (argv[0] == OBJECT_NULL)
+		world.mConv = NULL;
+	else world.mConv = (Conversation *)argv[0]->external.priv;
+	return OBJECT_NULL;
+}
+
+static object_t
+EXFUNC_SetConversationPage(void *, object_t func, int argc, object_t *argv)
+{
+	Conversation *conv = (Conversation *)argv[0]->external.priv;
+	int page = INT_UNBOX(argv[1]);
+
+	if (conv->SetPage(page))
+		return INT_BOX(0);
+	else return OBJECT_NULL;
+}
+
+static object_t
+EXFUNC_GetConversation(void *, object_t func, int argc, object_t *argv)
+{
+	object_t result;
+	
+	result = world.mSE.ObjectNew();
+	result->external.priv = Resource::Get<Conversation>(xstring_cstr(argv[0]->string));
+	result->external.enumerate = NULL;
+	result->external.free = NULL;
+	OBJECT_TYPE_INIT(result, OBJECT_TYPE_EXTERNAL);
+
+	std::cout << result << std::endl;
+	return result;
 }
 
 class : public Event
@@ -219,7 +300,14 @@ public:
 		world.mSE.ExternalFuncRegister("AddSpriteToMap", EXFUNC_AddSpriteToMap, NULL);
 		world.mSE.ExternalFuncRegister("SpriteMoveTo", EXFUNC_SpriteMoveTo, NULL);
 		world.mSE.ExternalFuncRegister("SetViewPoint", EXFUNC_SetViewPoint, NULL);
-		world.mSE.ExternalFuncRegister("AddTickEvent", EXFUNC_AddTickEvent, NULL);
+
+		world.mSE.ExternalFuncRegister("AddDelayEvent", EXFUNC_AddDelayEvent, NULL);
+		world.mSE.ExternalFuncRegister("PauseTimer", EXFUNC_PauseTimer, NULL);
+		world.mSE.ExternalFuncRegister("ResumeTimer", EXFUNC_ResumeTimer, NULL);
+
+		world.mSE.ExternalFuncRegister("GetConversation", EXFUNC_GetConversation, NULL);
+		world.mSE.ExternalFuncRegister("SetCurrentConversation", EXFUNC_SetCurrentConversation, NULL);
+		world.mSE.ExternalFuncRegister("SetConversationPage", EXFUNC_SetConversationPage, NULL);
 		
 		object_t exret;
 		std::vector<object_t> excall;
@@ -235,9 +323,6 @@ public:
 			}
 		}
 
-		world.conv = Resource::Get<Conversation>("data/conv1");
-		world.conv->SetPage(0);
-		
 		IO::Open();
 	}
 } initEvent;

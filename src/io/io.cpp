@@ -7,7 +7,7 @@ namespace GameEngine
 	
 	Drawable    *IO::sRootDrawable;
 	SDL_Surface *IO::sDisplay;
-	TimerPool   *IO::sTimerPool;
+	ThreadedTimerPool *IO::sTimerPool;
 	Timer        IO::sDrawTimer;
 	DrawEvent    IO::sDrawEvent;
 	
@@ -61,7 +61,7 @@ namespace GameEngine
 	void
 	IO::Open(void)
 	{
-		sTimerPool = new TimerPool(0, sRefreshHZ);
+		sTimerPool = new ThreadedTimerPool(0, sRefreshHZ);
 		sDrawTimer.SetEventLoop(&EventLoop::sMain);
 		sDrawTimer.SetEvent(&sDrawEvent);
 		sDrawTimer.SetTick(1);
