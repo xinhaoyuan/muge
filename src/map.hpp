@@ -62,7 +62,7 @@ namespace Game
 
 		Sprite *mSprite;
 
-
+		int mState;
 		int mX, mY, mZ;
 		int mW, mH, mDX, mDY;
 	};

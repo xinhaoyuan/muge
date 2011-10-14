@@ -56,8 +56,8 @@ namespace Game
 		void
 		Set(int id, MapTiles *tiles) { mId = id; mTiles = tiles; }
 	
-		void
-		Show(GameEngine::tick_t tick, SDL_Surface *screen, SDL_Rect *rect) {
+		virtual void
+		Show(int state, GameEngine::tick_t tick, SDL_Surface *screen, SDL_Rect *rect) {
 			mTiles->Show(mId, tick, screen, rect);
 		}
 	};
@@ -150,6 +150,7 @@ namespace Game
 		node->mY = y;
 		node->mZ = z;
 
+		node->mState = -1;
 		node->mMotion = NULL;
 		
 		node->mW = w;
@@ -173,6 +174,7 @@ namespace Game
 		TileNode *node = new TileNode;
 		node->mSprite = sprite;
 
+		node->mState = -1;
 		node->mMotion = new TileNode::Motion;
 		node->mMotion->mInitialized = false;
 		node->mMotion->mMotionIt = mMotionList.insert(mMotionList.end(), node);
@@ -337,7 +339,7 @@ namespace Game
 
 						_rect.x = rect->x + node->mX;
 						_rect.y = rect->y + node->mY - node->mZ;
-						node->mSprite->Show(tick, screen, &_rect);
+						node->mSprite->Show(node->mState, tick, screen, &_rect);
 					}
 
 					++ itX;

@@ -112,7 +112,7 @@ public:
 };
 
 static object_t
-EXFUNC_SetCurrentMap(void *, object_t func, int argc, object_t *argv)
+EXFUNC_CurrentMapSet(void *, object_t func, int argc, object_t *argv)
 {
 	if (argv[0] == OBJECT_NULL)
 		world.SetMap(NULL);
@@ -121,7 +121,7 @@ EXFUNC_SetCurrentMap(void *, object_t func, int argc, object_t *argv)
 }
 
 static object_t
-EXFUNC_GetSimpleSprite(void *, object_t func, int argc, object_t *argv)
+EXFUNC_SimpleSpriteGet(void *, object_t func, int argc, object_t *argv)
 {
 	object_t result;
 	
@@ -135,7 +135,7 @@ EXFUNC_GetSimpleSprite(void *, object_t func, int argc, object_t *argv)
 }
 
 static object_t
-EXFUNC_GetMap(void *, object_t func, int argc, object_t *argv)
+EXFUNC_MapGet(void *, object_t func, int argc, object_t *argv)
 {
 	object_t result;
 	
@@ -149,9 +149,20 @@ EXFUNC_GetMap(void *, object_t func, int argc, object_t *argv)
 }
 
 static object_t
-EXFUNC_AddSpriteToMap(void *, object_t func, int argc, object_t *argv)
+EXFUNC_NodeStateSet(void *, object_t func, int argc, object_t *argv)
 {
-	Map *map = (Map *)argv[0]->external.priv;
+	TileNode *node = (TileNode *)argv[0]->external.priv;
+	int state = INT_UNBOX(argv[1]);
+
+	node->mState = state;
+	
+	return OBJECT_NULL;
+}
+
+static object_t
+EXFUNC_SpriteAdd(void *, object_t func, int argc, object_t *argv)
+{
+	Map *map = (Map *)argv[0]->external.priv;	
 	Sprite *sprite = (Sprite *)argv[1]->external.priv;
 	int x = INT_UNBOX(argv[2]);
 	int y = INT_UNBOX(argv[3]);
@@ -178,7 +189,7 @@ EXFUNC_AddSpriteToMap(void *, object_t func, int argc, object_t *argv)
 }
 
 static object_t
-EXFUNC_SpriteMoveTo(void *, object_t func, int argc, object_t *argv)
+EXFUNC_NodeMove(void *, object_t func, int argc, object_t *argv)
 {
 	TileNode *node = (TileNode *)argv[0]->external.priv;
 	int x = INT_UNBOX(argv[1]);
@@ -198,7 +209,7 @@ EXFUNC_SpriteMoveTo(void *, object_t func, int argc, object_t *argv)
 
 
 static object_t
-EXFUNC_SetViewPoint(void *, object_t func, int argc, object_t *argv)
+EXFUNC_ViewPointSet(void *, object_t func, int argc, object_t *argv)
 {
 	int x = INT_UNBOX(argv[0]);
 	int y = INT_UNBOX(argv[1]);
@@ -209,7 +220,7 @@ EXFUNC_SetViewPoint(void *, object_t func, int argc, object_t *argv)
 }
 
 static object_t
-EXFUNC_AddDelayEvent(void *, object_t func, int argc, object_t *argv)
+EXFUNC_DelayEventAdd(void *, object_t func, int argc, object_t *argv)
 {
 	int tick_idx = INT_UNBOX(argv[0]);
 	int delay = INT_UNBOX(argv[1]);
@@ -229,7 +240,7 @@ EXFUNC_AddDelayEvent(void *, object_t func, int argc, object_t *argv)
 }
 
 static object_t
-EXFUNC_PauseTimer(void *, object_t func, int argc, object_t *argv)
+EXFUNC_TimerPause(void *, object_t func, int argc, object_t *argv)
 {
 	int tick_idx = INT_UNBOX(argv[0]);
 	world.mTimerPause[tick_idx] = true;
@@ -237,7 +248,7 @@ EXFUNC_PauseTimer(void *, object_t func, int argc, object_t *argv)
 }
 
 static object_t
-EXFUNC_ResumeTimer(void *, object_t func, int argc, object_t *argv)
+EXFUNC_TimerResume(void *, object_t func, int argc, object_t *argv)
 {
 	int tick_idx = INT_UNBOX(argv[0]);
 	world.mTimerPause[tick_idx] = false;
@@ -245,7 +256,7 @@ EXFUNC_ResumeTimer(void *, object_t func, int argc, object_t *argv)
 }
 
 static object_t
-EXFUNC_SetCurrentConversation(void *, object_t func, int argc, object_t *argv)
+EXFUNC_CurrentConversationSet(void *, object_t func, int argc, object_t *argv)
 {
 	if (argv[0] == OBJECT_NULL)
 		world.mConv = NULL;
@@ -254,7 +265,7 @@ EXFUNC_SetCurrentConversation(void *, object_t func, int argc, object_t *argv)
 }
 
 static object_t
-EXFUNC_SetConversationPage(void *, object_t func, int argc, object_t *argv)
+EXFUNC_ConversationPageSet(void *, object_t func, int argc, object_t *argv)
 {
 	Conversation *conv = (Conversation *)argv[0]->external.priv;
 	int page = INT_UNBOX(argv[1]);
@@ -265,7 +276,7 @@ EXFUNC_SetConversationPage(void *, object_t func, int argc, object_t *argv)
 }
 
 static object_t
-EXFUNC_GetConversation(void *, object_t func, int argc, object_t *argv)
+EXFUNC_ConversationGet(void *, object_t func, int argc, object_t *argv)
 {
 	object_t result;
 	
@@ -275,7 +286,6 @@ EXFUNC_GetConversation(void *, object_t func, int argc, object_t *argv)
 	result->external.free = NULL;
 	OBJECT_TYPE_INIT(result, OBJECT_TYPE_EXTERNAL);
 
-	std::cout << result << std::endl;
 	return result;
 }
 
@@ -294,20 +304,25 @@ public:
 		
 		world.mSE.LoadScript("script/test.ss");
 		
-		world.mSE.ExternalFuncRegister("SetCurrentMap", EXFUNC_SetCurrentMap, NULL);
-		world.mSE.ExternalFuncRegister("GetSimpleSprite", EXFUNC_GetSimpleSprite, NULL);
-		world.mSE.ExternalFuncRegister("GetMap", EXFUNC_GetMap, NULL);
-		world.mSE.ExternalFuncRegister("AddSpriteToMap", EXFUNC_AddSpriteToMap, NULL);
-		world.mSE.ExternalFuncRegister("SpriteMoveTo", EXFUNC_SpriteMoveTo, NULL);
-		world.mSE.ExternalFuncRegister("SetViewPoint", EXFUNC_SetViewPoint, NULL);
+		world.mSE.ExternalFuncRegister("CurrentMapSet", EXFUNC_CurrentMapSet, NULL);
+		world.mSE.ExternalFuncRegister("MapGet", EXFUNC_MapGet, NULL);
 
-		world.mSE.ExternalFuncRegister("AddDelayEvent", EXFUNC_AddDelayEvent, NULL);
-		world.mSE.ExternalFuncRegister("PauseTimer", EXFUNC_PauseTimer, NULL);
-		world.mSE.ExternalFuncRegister("ResumeTimer", EXFUNC_ResumeTimer, NULL);
+		world.mSE.ExternalFuncRegister("SimpleSpriteGet", EXFUNC_SimpleSpriteGet, NULL);
+		
+		world.mSE.ExternalFuncRegister("SpriteAdd", EXFUNC_SpriteAdd, NULL);
+		
+		world.mSE.ExternalFuncRegister("NodeStateSet", EXFUNC_NodeStateSet, NULL);
+		world.mSE.ExternalFuncRegister("NodeMove", EXFUNC_NodeMove, NULL);
+		
+		world.mSE.ExternalFuncRegister("ViewPointSet", EXFUNC_ViewPointSet, NULL);
 
-		world.mSE.ExternalFuncRegister("GetConversation", EXFUNC_GetConversation, NULL);
-		world.mSE.ExternalFuncRegister("SetCurrentConversation", EXFUNC_SetCurrentConversation, NULL);
-		world.mSE.ExternalFuncRegister("SetConversationPage", EXFUNC_SetConversationPage, NULL);
+		world.mSE.ExternalFuncRegister("DelayEventAdd", EXFUNC_DelayEventAdd, NULL);
+		world.mSE.ExternalFuncRegister("TimerPause", EXFUNC_TimerPause, NULL);
+		world.mSE.ExternalFuncRegister("TimerResume", EXFUNC_TimerResume, NULL);
+
+		world.mSE.ExternalFuncRegister("ConversationGet", EXFUNC_ConversationGet, NULL);
+		world.mSE.ExternalFuncRegister("CurrentConversationSet", EXFUNC_CurrentConversationSet, NULL);
+		world.mSE.ExternalFuncRegister("ConversationPageSet", EXFUNC_ConversationPageSet, NULL);
 		
 		object_t exret;
 		std::vector<object_t> excall;
