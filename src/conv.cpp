@@ -5,6 +5,7 @@
 
 #include "conv.hpp"
 #include "resource.hpp"
+#include "map.hpp"
 
 namespace Game
 {
@@ -64,13 +65,46 @@ namespace Game
 	Conversation::Load(const char *name)
 	{
 		std::ifstream fin(name);
-		std::string fontname;
-		int width, height;
+		std::string fontname, boxtilename;
+		int innerWidth, innerHeight;
+		int outerWidth, outerHeight;
 		
-		fin >> width;
-		fin >> height;
+		fin >> innerWidth;
+		fin >> innerHeight;
+		fin >> boxtilename;
 		fin >> fontname;
 
+		MapTiles *tiles = Resource::Get<MapTiles>(boxtilename.c_str());
+
+		outerWidth = (((innerWidth - 1) / tiles->mWidth) + 3);
+		outerHeight = (((innerHeight - 1) / tiles->mHeight) + 3);
+
+		SDL_Surface *bg = SDL_CreateRGBSurface(SDL_SWSURFACE,
+											   outerWidth * tiles->mWidth, outerHeight * tiles->mHeight,
+											   32, 0, 0, 0, 0);
+		SDL_SetColorKey(bg, SDL_SRCCOLORKEY,
+						SDL_MapRGB(bg->format, tiles->mTransR, tiles->mTransG, tiles->mTransB));
+
+		SDL_Rect r;
+		int i, j;
+		for (i = 0; i < outerWidth; ++ i)
+			for (j = 0; j < outerHeight; ++ j)
+			{
+				r.x = i * tiles->mWidth;
+				r.y = j * tiles->mHeight;
+				int u, v;
+
+				if (i == 0) u = 0;
+				else if (i == outerWidth - 1) u = 2;
+				else u = 1;
+
+				if (j == 0) v = 0;
+				else if (j == outerHeight - 1) v = 2;
+				else v = 1;
+
+				tiles->Show(v * 3 + u, 0, bg, &r);
+			}
+		
 		std::string line;
 		std::u16string text;
 
@@ -103,21 +137,23 @@ namespace Game
 		int height_count = 0;
 
 		Conversation *conv = new Conversation;
-		conv->mWidth = width;
-		conv->mHeight = height;
+		conv->mInnerWidth = innerWidth;
+		conv->mInnerHeight = innerHeight;
+		conv->mOuterWidth = outerWidth * tiles->mWidth;
+		conv->mOuterHeight = outerHeight * tiles->mHeight;
+		conv->mBgSur = bg;
 		
 		SDL_Surface *sur = NULL;
-		SDL_Rect r;
 		r.x = 0;
 		while (cur_idx < text.length())
 		{
 			int l;
-			l = font->UnicodeTextMaxAdvance(text.c_str() + cur_idx, width);
+			l = font->UnicodeTextMaxAdvance(text.c_str() + cur_idx, innerWidth);
 			std::u16string tmp(text.c_str() + cur_idx, l);
 			
 			int w, h;
 			font->UnicodeTextSize(tmp.c_str(), &w, &h);
-			if (height_count + h > height)
+			if (height_count + h > innerHeight)
 			{
 				conv->mPages.push_back(sur);
 				sur = NULL;
@@ -129,13 +165,8 @@ namespace Game
 			{
 				if (sur == NULL)
 				{
-					sur = SDL_CreateRGBSurface(SDL_SWSURFACE | SDL_SRCALPHA, width, height, 32,
-											   0x000000FF, 0x0000FF00, 0x00FF0000, 0xFF000000);
-					
-					SDL_Rect rect;
-					SDL_GetClipRect(sur, &rect);
-					SDL_FillRect(sur, &rect,
-								 SDL_MapRGBA(sur->format, 255, 0, 0, 0));
+					sur = SDL_CreateRGBSurface(SDL_SWSURFACE | SDL_SRCALPHA, innerWidth, innerHeight, 32,
+											   0x000000FF, 0x0000FF00, 0x00FF0000, 0xFF000000);					
 				}
 				r.y = height_count;
 				SDL_Surface *sur_line = font->UnicodeTextRender(tmp.c_str(), {255, 255, 255});
@@ -167,9 +198,14 @@ namespace Game
 	Conversation::Show(GameEngine::tick_t tick, SDL_Surface *screen, SDL_Rect *rect)
 	{
 		if (mPage == -1) return;
-		
-		rect->x = (640 - mWidth) / 2;
-		rect->y = 0;
+
+		rect->x = (640 - mOuterWidth) / 2;
+		rect->y = (480 - mOuterHeight) - 10;
+
+		SDL_BlitSurface(mBgSur, NULL, screen, rect);
+
+		rect->x = (640 - mInnerWidth) / 2;
+		rect->y = (480 - (mInnerHeight + mOuterHeight) / 2) - 10;
 		
 		SDL_BlitSurface(mPages[mPage], NULL, screen, rect);
 	}

@@ -25,12 +25,17 @@ namespace Game
 
 	class Conversation
 	{
+		SDL_Surface *mBgSur;
 		std::vector<SDL_Surface *> mPages;
 		int mPage;
+		
 	public:
 		
-		int mHeight;
-		int mWidth;
+		int mInnerHeight;
+		int mInnerWidth;
+
+		int mOuterHeight;
+		int mOuterWidth;
 
 		static Conversation *Load(const char *name);
 		bool SetPage(int page);
