@@ -28,7 +28,7 @@ public:
 	object_t mHandlerPair;
 	
 	Map *mMap;
-	int mVPX, mVPY;
+	Motion mVPXMotion, mVPYMotion;
 	
 	Conversation *mConv;
 
@@ -53,12 +53,6 @@ public:
 		mMap = map;
 	}
 
-	void
-	SetViewPoint(int vpx, int vpy) {
-		mVPX = vpx;
-		mVPY = vpy;
-	}
-
 	void Draw(tick_t tick, void *scene) {
 
 		int i;
@@ -81,7 +75,10 @@ public:
 			rect.x = 0;
 			rect.y = 0;
 			mMap->UpdateMotion(mTick[TIMER_MAP]);
-			mMap->Show(tick, screen, &rect, mVPX, mVPY, 640, 480);
+			mMap->Show(tick, screen, &rect,
+					   mVPXMotion.Get(mTick[TIMER_MAP]),
+					   mVPYMotion.Get(mTick[TIMER_MAP]),
+					   640, 480);
 		}
 
 		if (mConv)
@@ -214,7 +211,23 @@ EXFUNC_ViewPointSet(void *, object_t func, int argc, object_t *argv)
 	int x = INT_UNBOX(argv[0]);
 	int y = INT_UNBOX(argv[1]);
 
-	world.SetViewPoint(x, y);
+	world.mVPXMotion.SetConstant(x);
+	world.mVPYMotion.SetConstant(y);
+
+	return OBJECT_NULL;
+}
+
+static object_t
+EXFUNC_ViewPointMove(void *, object_t func, int argc, object_t *argv)
+{
+	int x = INT_UNBOX(argv[0]);
+	int y = INT_UNBOX(argv[1]);
+	int l = INT_UNBOX(argv[2]);
+
+	world.mVPXMotion.SetInterval(world.mTick[TIMER_MAP], world.mVPXMotion.Get(world.mTick[TIMER_MAP]),
+								 world.mTick[TIMER_MAP] + l, x);
+	world.mVPYMotion.SetInterval(world.mTick[TIMER_MAP], world.mVPYMotion.Get(world.mTick[TIMER_MAP]),
+								 world.mTick[TIMER_MAP] + l, x);
 
 	return OBJECT_NULL;
 }
@@ -297,6 +310,9 @@ public:
 		SDL_WM_SetCaption("GAME", NULL);
 		SDL_keystate = SDL_GetKeyState(NULL);
 
+		world.mVPXMotion.SetConstant(0);
+		world.mVPYMotion.SetConstant(0);
+		
 		world.mHandlerPair = world.mSE.ObjectNew();
 		SLOT_SET(world.mHandlerPair->pair.slot_car, OBJECT_NULL);
 		SLOT_SET(world.mHandlerPair->pair.slot_cdr, OBJECT_NULL);
@@ -315,6 +331,7 @@ public:
 		world.mSE.ExternalFuncRegister("NodeMove", EXFUNC_NodeMove, NULL);
 		
 		world.mSE.ExternalFuncRegister("ViewPointSet", EXFUNC_ViewPointSet, NULL);
+		world.mSE.ExternalFuncRegister("ViewPointMove", EXFUNC_ViewPointMove, NULL);
 
 		world.mSE.ExternalFuncRegister("DelayEventAdd", EXFUNC_DelayEventAdd, NULL);
 		world.mSE.ExternalFuncRegister("TimerPause", EXFUNC_TimerPause, NULL);
