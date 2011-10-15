@@ -10,7 +10,7 @@
       ("NodeStateSet" dango-node 0)
       ("NodeStateSet" human-node 0)
 	  ("CurrentMapSet" map)
-	  ("ViewPointMove" -100 -100 120)
+	  ("ViewPointMove" -200 -200 120)
       (with (u d l r)
             (set! u (lambda ()
                       ("NodeStateSet" human-node 3)

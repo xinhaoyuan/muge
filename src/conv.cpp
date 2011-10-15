@@ -81,10 +81,10 @@ namespace Game
 
 		SDL_Surface *bg = SDL_CreateRGBSurface(SDL_SWSURFACE,
 											   outerWidth * tiles->mWidth, outerHeight * tiles->mHeight,
-											   32, 0, 0, 0, 0);
-		SDL_SetColorKey(bg, SDL_SRCCOLORKEY,
-						SDL_MapRGB(bg->format, tiles->mTransR, tiles->mTransG, tiles->mTransB));
-
+											   32,
+											   // 0, 0, 0, 0);
+											   0x000000FF, 0x0000FF00, 0x00FF0000, 0xFF000000);
+		
 		SDL_Rect r;
 		int i, j;
 		for (i = 0; i < outerWidth; ++ i)
@@ -104,7 +104,7 @@ namespace Game
 
 				tiles->Show(v * 3 + u, 0, bg, &r);
 			}
-		
+
 		std::string line;
 		std::u16string text;
 
