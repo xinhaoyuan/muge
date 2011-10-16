@@ -67,8 +67,8 @@ namespace Game
 		n = ast_syntax_parse(n, 0);
 		sematic_symref_analyse(n);
 
-		expression_t e = expression_from_ast(mHeap, n);
-		mProg = continuation_from_expression(mHeap, e);
+		object_t h = handle_from_ast(mHeap, n);
+		mProg = continuation_from_handle(mHeap, h);
 	}
 
 	int
