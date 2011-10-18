@@ -1,1 +1,5 @@
 muGE is a simple and prototype game (engine) for 2d rpg/arpg game.
+
+Using SDL as the rendering engine, and SEE as the script engine.
+
+See script/test.ss for the example of the game script.

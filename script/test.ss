@@ -11,6 +11,7 @@
       ("NodeStateSet" human-node 0)
 	  ("CurrentMapSet" map)
 	  ("ViewPointMove" -200 -200 120)
+      ("DelayEventAdd" 0 120 (lambda () ("ViewPointShiver" 5)))
       (with (u d l r)
             (set! u (lambda ()
                       ("NodeStateSet" human-node 3)

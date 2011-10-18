@@ -13,6 +13,7 @@ namespace Game
 		{
 			MotionInterval,
 			MotionConstant,
+			MotionShiver,
 		} mType;
 		
 		union
@@ -27,6 +28,12 @@ namespace Game
 				int value_start;
 				int value_end;
 			} mInterval;
+
+			struct
+			{
+				int origin;
+				int delta;
+			} mShiver;
 		};
 
 	public:
@@ -35,6 +42,7 @@ namespace Game
 		void SetConstant(int c);
 		void SetInterval(GameEngine::tick_t tick_start, int value_start,
 						 GameEngine::tick_t tick_end, int value_end);
+		void SetShiver(int origin, int delta);
 	};
 }
 

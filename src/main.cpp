@@ -206,6 +206,20 @@ EXFUNC_NodeMove(void *, object_t func, int argc, object_t *argv)
 
 
 static object_t
+EXFUNC_NodeShiver(void *, object_t func, int argc, object_t *argv)
+{
+	TileNode *node = (TileNode *)argv[0]->external.priv;
+	int d = INT_UNBOX(argv[1]);
+
+	node->mMotion->mXMotion.SetShiver(node->mMotion->mXMotion.Get(world.mTick[TIMER_MAP]), d);
+	node->mMotion->mYMotion.SetShiver(node->mMotion->mYMotion.Get(world.mTick[TIMER_MAP]), d);
+	node->mMotion->mZMotion.SetConstant(node->mMotion->mZMotion.Get(world.mTick[TIMER_MAP]));
+
+	return OBJECT_NULL;
+}
+
+
+static object_t
 EXFUNC_ViewPointSet(void *, object_t func, int argc, object_t *argv)
 {
 	int x = INT_UNBOX(argv[0]);
@@ -229,6 +243,18 @@ EXFUNC_ViewPointMove(void *, object_t func, int argc, object_t *argv)
 	world.mVPYMotion.SetInterval(world.mTick[TIMER_MAP], world.mVPYMotion.Get(world.mTick[TIMER_MAP]),
 								 world.mTick[TIMER_MAP] + l, x);
 
+	return OBJECT_NULL;
+}
+
+
+static object_t
+EXFUNC_ViewPointShiver(void *, object_t func, int argc, object_t *argv)
+{
+	int d = INT_UNBOX(argv[0]);
+
+	world.mVPXMotion.SetShiver(world.mVPXMotion.Get(world.mTick[TIMER_MAP]), d);
+	world.mVPYMotion.SetShiver(world.mVPYMotion.Get(world.mTick[TIMER_MAP]), d);
+	
 	return OBJECT_NULL;
 }
 
@@ -329,9 +355,11 @@ public:
 		
 		world.mSE.ExternalFuncRegister("NodeStateSet", EXFUNC_NodeStateSet, NULL);
 		world.mSE.ExternalFuncRegister("NodeMove", EXFUNC_NodeMove, NULL);
+		world.mSE.ExternalFuncRegister("NodeShiver", EXFUNC_NodeShiver, NULL);
 		
 		world.mSE.ExternalFuncRegister("ViewPointSet", EXFUNC_ViewPointSet, NULL);
 		world.mSE.ExternalFuncRegister("ViewPointMove", EXFUNC_ViewPointMove, NULL);
+		world.mSE.ExternalFuncRegister("ViewPointShiver", EXFUNC_ViewPointShiver, NULL);
 
 		world.mSE.ExternalFuncRegister("DelayEventAdd", EXFUNC_DelayEventAdd, NULL);
 		world.mSE.ExternalFuncRegister("TimerPause", EXFUNC_TimerPause, NULL);

@@ -1,6 +1,7 @@
 #include "motion.hpp"
 
 #include <iostream>
+#include <stdlib.h>
 
 namespace Game
 {
@@ -21,6 +22,8 @@ namespace Game
 					 (double)(tick - mInterval.tick_start) *
 					 (mInterval.value_end - mInterval.value_start) /
 					 (mInterval.tick_end - mInterval.tick_start);
+		case MotionShiver:
+			return (mShiver.origin + (double)rand() / RAND_MAX * mShiver.delta);
 		}
 	}
 
@@ -40,6 +43,14 @@ namespace Game
 		mInterval.value_start = value_start;
 		mInterval.tick_end    = tick_end;
 		mInterval.value_end   = value_end;
+	}
+
+	void
+	Motion::SetShiver(int origin, int delta)
+	{
+		mType = MotionShiver;
+		mShiver.origin = origin;
+		mShiver.delta = delta;
 	}
 
 }
