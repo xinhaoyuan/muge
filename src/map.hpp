@@ -4,6 +4,7 @@
 #include <SDL/SDL.h>
 #include <deque>
 #include <map>
+#include <vector>
 
 #include "sprite.hpp"
 #include "logic/object.hpp"
@@ -57,11 +58,12 @@ namespace Game
 			Game::Motion mZMotion;			
 		} *mMotion;
 
-		TileNode(void) { mMotion = NULL; }
+		TileNode(void) : mIsMapTile(false), mMotion(NULL) { }
 		~TileNode(void) { if (mMotion) delete mMotion; }
 
 		Sprite *mSprite;
-
+		bool mIsMapTile;
+		
 		int mState;
 		int mX, mY, mZ;
 		int mW, mH, mDX, mDY;
@@ -85,9 +87,9 @@ namespace Game
 	{
 	private:
 
-		std::deque<TileNode *> mMotionList;
-		MapSprite *mMapSprite;
-		MapTiles  *mMapTiles;
+		std::deque<TileNode *>   mMotionList;
+		std::vector<MapSprite *> mMapSprite;
+		MapTiles                *mMapTiles;
 
 	public:
 

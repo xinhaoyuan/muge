@@ -53,6 +53,8 @@ namespace Game
 		int mId;
 		MapTiles *mTiles;
 	public:
+		MapSprite(int id, MapTiles *tiles) : mId(id), mTiles(tiles) { }
+		
 		void
 		Set(int id, MapTiles *tiles) { mId = id; mTiles = tiles; }
 	
@@ -245,38 +247,37 @@ namespace Game
 		Map *result = new Map();
 		
 		std::ifstream fin(name);
-		int w, h, count;
-		fin >> w >> h >> count;
+		int w, h;
+		fin >> w >> h;
 		std::string tilesname;
 		fin >> tilesname;
 
 
 		result->mMapTiles  = Resource::Get<MapTiles>(tilesname.c_str());
-		result->mMapSprite = new MapSprite[count];
 
-		int i, j, c = 0, d;
+		int i, j, c = 0, d, cur_h;
 		for (j = 0; j != h; ++ j)
 		{
 			for (i = 0; i != w; ++ i)
 			{
 				fin >> d;
-				while (d > 0)
+				for (cur_h = 0; cur_h < d; ++ cur_h)
 				{
 					int id;
 					fin >> id;
 
-					result->mMapSprite[c].Set(id, result->mMapTiles);
-					result->AddConstantSprite(&result->mMapSprite[c],
+					if (id == -1) continue;
+
+					result->mMapSprite.push_back(new MapSprite(id, result->mMapTiles));
+					result->AddConstantSprite(result->mMapSprite[result->mMapSprite.size() - 1],
 									  i * result->mMapTiles->mWidth,
 									  j * result->mMapTiles->mHeight,
-									  (d - 2) * result->mMapTiles->mLHeight,
+									  (cur_h - 1) * result->mMapTiles->mLHeight,
 									  result->mMapTiles->mWidth,
 									  result->mMapTiles->mHeight + result->mMapTiles->mLHeight,
 									  result->mMapTiles->mWidth - 1,
-									  result->mMapTiles->mHeight + result->mMapTiles->mLHeight - 1);
+									  result->mMapTiles->mHeight + result->mMapTiles->mLHeight - 1)->mIsMapTile = true;
 					
-					c ++;
-					d --;
 				}
 			}
 		}
@@ -354,7 +355,8 @@ namespace Game
 
 	Map::~Map(void)
 	{
-		if (mMapSprite)
-			delete mMapSprite;
+		int i;
+		for (i = 0; i != mMapSprite.size(); ++ i)
+			delete mMapSprite[i];
 	}
 }
