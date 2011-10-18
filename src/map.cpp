@@ -18,18 +18,28 @@ namespace Game
 		conf >> result->mHeight;
 		conf >> result->mLHeight;
 		conf >> result->mTPL;
-		conf >> result->mTransR;
-		conf >> result->mTransG;
-		conf >> result->mTransB;
 
 		conf >> filename;
-		
-		SDL_Surface *suf = SDL_LoadBMP(filename.c_str());
-		result->mTileTexture = SDL_DisplayFormat(suf);
-		SDL_FreeSurface(suf);
 
-		SDL_SetColorKey(result->mTileTexture, SDL_SRCCOLORKEY,
-						SDL_MapRGB(result->mTileTexture->format, result->mTransR, result->mTransG, result->mTransB));
+		SDL_RWops *file = SDL_RWFromFile(filename.c_str(), "rb");
+		int png = IMG_isPNG(file);
+		SDL_Surface *suf = IMG_Load_RW(file, 1);
+		result->mTileTexture = suf;
+
+		if (png)
+		{
+			SDL_SetColorKey(result->mTileTexture, SDL_SRCCOLORKEY,
+							result->mTileTexture->format->colorkey); 
+		}
+		else
+		{
+			conf >> result->mTransR;
+			conf >> result->mTransG;
+			conf >> result->mTransB;
+
+			SDL_SetColorKey(result->mTileTexture, SDL_SRCCOLORKEY,
+							SDL_MapRGB(result->mTileTexture->format, result->mTransR, result->mTransG, result->mTransB));
+		}
 
 		return result;
 	}

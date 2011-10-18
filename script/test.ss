@@ -2,7 +2,7 @@
 	  (set! map ("MapGet" "data/map1"))
 	  (set! budan ("SimpleSpriteGet" "data/budan.sprite"))
 	  (set! dango ("SimpleSpriteGet" "data/dango.sprite"))
-	  (set! human ("SimpleSpriteGet" "data/human1.sprite"))
+	  (set! human ("SimpleSpriteGet" "data/human2.sprite"))
 	  (set! budan-node ("SpriteAdd" map budan 32 0 0 32 32 31 31))
 	  (set! dango-node ("SpriteAdd" map dango 0  0 0 32 32 31 31))
 	  (set! human-node ("SpriteAdd" map human 64 32 16 32 32 31 31))

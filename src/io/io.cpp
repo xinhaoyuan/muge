@@ -76,6 +76,7 @@ namespace GameEngine
 	{
 		SDL_Init(SDL_INIT_EVERYTHING);
 		TTF_Init();
+		IMG_Init(IMG_INIT_PNG);
 		sDisplay = SDL_SetVideoMode(sScreenWidth, sScreenHeight, sScreenBPP,
 									SDL_HWSURFACE | SDL_DOUBLEBUF | (sFullScreen ? SDL_FULLSCREEN : 0));
 		EventLoop::sMain.Enqueue(sInitEvent);
@@ -86,6 +87,8 @@ namespace GameEngine
 			if (e.type == SDL_USEREVENT && e.user.code == 0)
 			{
 				SDL_FreeSurface(sDisplay);
+				IMG_Quit();
+				TTF_Quit();
 				SDL_Quit();
 				break;
 			}

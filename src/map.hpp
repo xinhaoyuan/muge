@@ -2,6 +2,7 @@
 #define __MAP_HPP__
 
 #include <SDL/SDL.h>
+#include <SDL/SDL_image.h>
 #include <deque>
 #include <map>
 #include <vector>

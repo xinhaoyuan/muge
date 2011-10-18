@@ -15,21 +15,29 @@ namespace Game
 		std::ifstream fin(name);
 			
 		fin >> uwidth >> uheight;
-		fin >> states;
-		fin >> keyR >> keyG >> keyB;
+		fin >> states;		
 			
 		std::string filename;
 			
 		fin >> filename;
 			
 		SimpleSprite *result = new SimpleSprite;
-		
-		SDL_Surface *img = SDL_LoadBMP(filename.c_str());
-		result->mSur = SDL_DisplayFormat(img);
-		SDL_FreeSurface(img);
+		SDL_RWops *file = SDL_RWFromFile(filename.c_str(), "rb");
+		int png = IMG_isPNG(file);
+		SDL_Surface *img = IMG_Load_RW(file, 1);
+		result->mSur = img;
 
-		SDL_SetColorKey(result->mSur, SDL_SRCCOLORKEY,
-						SDL_MapRGB(result->mSur->format, keyR, keyG, keyB));
+		if (png)
+		{
+			SDL_SetColorKey(result->mSur, SDL_SRCCOLORKEY,
+							result->mSur->format->colorkey); 
+		}
+		else
+		{
+			fin >> keyR >> keyG >> keyB;
+			SDL_SetColorKey(result->mSur, SDL_SRCCOLORKEY,
+							SDL_MapRGB(result->mSur->format, keyR, keyG, keyB));
+		}
 
 		result->mFrameCount = new int[states];
 		result->mOffsetX = new int[states];

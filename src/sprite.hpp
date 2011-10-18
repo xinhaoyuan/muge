@@ -2,6 +2,7 @@
 #define __SPRITE_HPP__
 
 #include <SDL/SDL.h>
+#include <SDL/SDL_image.h>
 
 #include "logic/object.hpp"
 
