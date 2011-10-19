@@ -41,7 +41,7 @@
                                ("NodeMove" budan-node 200 30 0 30)
                                ("DelayEventAdd" 0 30 move-left)))
 	    	("DelayEventAdd" 0 180 move-right))
-      (set! conv ("ConversationGet" "data/conv1"))
+      (set! conv ("ConversationGet" "data/test.conv"))
       ("ConversationPageSet" conv 0)
       ("CurrentConversationSet" conv)
       ("TimerResume" 0)
