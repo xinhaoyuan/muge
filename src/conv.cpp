@@ -74,13 +74,13 @@ namespace Game
 		fin >> boxtilename;
 		fin >> fontname;
 
-		MapTiles *tiles = Resource::Get<MapTiles>(boxtilename.c_str());
+		SimpleSprite *bd = Resource::Get<SimpleSprite>(boxtilename.c_str());
 
-		outerWidth = (((innerWidth - 1) / tiles->mWidth) + 3);
-		outerHeight = (((innerHeight - 1) / tiles->mHeight) + 3);
+		outerWidth = (((innerWidth - 1) / bd->mWidth) + 3);
+		outerHeight = (((innerHeight - 1) / bd->mHeight) + 3);
 
 		SDL_Surface *bg = SDL_CreateRGBSurface(SDL_SWSURFACE,
-											   outerWidth * tiles->mWidth, outerHeight * tiles->mHeight,
+											   outerWidth * bd->mWidth, outerHeight * bd->mHeight,
 											   32,
 											   // 0, 0, 0, 0);
 											   0x000000FF, 0x0000FF00, 0x00FF0000, 0xFF000000);
@@ -90,8 +90,8 @@ namespace Game
 		for (i = 0; i < outerWidth; ++ i)
 			for (j = 0; j < outerHeight; ++ j)
 			{
-				r.x = i * tiles->mWidth;
-				r.y = j * tiles->mHeight;
+				r.x = i * bd->mWidth;
+				r.y = j * bd->mHeight;
 				int u, v;
 
 				if (i == 0) u = 0;
@@ -102,7 +102,7 @@ namespace Game
 				else if (j == outerHeight - 1) v = 2;
 				else v = 1;
 
-				tiles->Show(v * 3 + u, 0, bg, &r);
+				bd->Show(v * 3 + u, 0, bg, &r);
 			}
 
 		std::string line;
@@ -139,8 +139,8 @@ namespace Game
 		Conversation *conv = new Conversation;
 		conv->mInnerWidth = innerWidth;
 		conv->mInnerHeight = innerHeight;
-		conv->mOuterWidth = outerWidth * tiles->mWidth;
-		conv->mOuterHeight = outerHeight * tiles->mHeight;
+		conv->mOuterWidth = outerWidth * bd->mWidth;
+		conv->mOuterHeight = outerHeight * bd->mHeight;
 		conv->mBgSur = bg;
 		
 		SDL_Surface *sur = NULL;

@@ -25,11 +25,13 @@ namespace Game
 		int *mOffsetY;
 		
 	public:
+
+		int mWidth;
+		int mHeight;
 		
 		static SimpleSprite *Load(const char *name);
 		~SimpleSprite(void);
 
-		void SetState(int state);
 		virtual void Show(int state, GameEngine::tick_t tick, SDL_Surface *screen, SDL_Rect *rect);
 	};
 

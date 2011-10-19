@@ -6,75 +6,6 @@
 
 namespace Game
 {
-	MapTiles *
-	MapTiles::Load(const char *name)
-	{
-		MapTiles *result = new MapTiles;
-		
-		std::string filename;
-		std::ifstream conf(name);
-
-		conf >> result->mWidth;
-		conf >> result->mHeight;
-		conf >> result->mLHeight;
-		conf >> result->mTPL;
-
-		conf >> filename;
-
-		SDL_RWops *file = SDL_RWFromFile(filename.c_str(), "rb");
-		int png = IMG_isPNG(file);
-		SDL_Surface *suf = IMG_Load_RW(file, 1);
-		result->mTileTexture = suf;
-
-		if (png)
-		{
-			SDL_SetColorKey(result->mTileTexture, SDL_SRCCOLORKEY,
-							result->mTileTexture->format->colorkey); 
-		}
-		else
-		{
-			conf >> result->mTransR;
-			conf >> result->mTransG;
-			conf >> result->mTransB;
-
-			SDL_SetColorKey(result->mTileTexture, SDL_SRCCOLORKEY,
-							SDL_MapRGB(result->mTileTexture->format, result->mTransR, result->mTransG, result->mTransB));
-		}
-
-		return result;
-	}
-
-	void
-	MapTiles::Show(int id, GameEngine::tick_t tick, SDL_Surface *surface, SDL_Rect *rect)
-	{
-		SDL_Rect src_rect;
-
-		src_rect.x = id % mTPL * mWidth;
-		src_rect.y = id / mTPL * (mHeight + mLHeight);
-		src_rect.w = mWidth;
-		src_rect.h = mHeight + mLHeight;
-
-		SDL_BlitSurface(mTileTexture, &src_rect, surface, rect);
-	}
-
-	class MapSprite : public Sprite
-	{
-		
-		int mId;
-		MapTiles *mTiles;
-	public:
-		MapSprite(int id, MapTiles *tiles) : mId(id), mTiles(tiles) { }
-		
-		void
-		Set(int id, MapTiles *tiles) { mId = id; mTiles = tiles; }
-	
-		virtual void
-		Show(int state, GameEngine::tick_t tick, SDL_Surface *screen, SDL_Rect *rect) {
-			mTiles->Show(mId, tick, screen, rect);
-		}
-	};
-
-
 	std::deque<TileNode *> *
 	TileMap::Get(int x, int y, int z)
 	{
@@ -171,9 +102,9 @@ namespace Game
 		node->mDX = dx;
 		node->mDY = dy;
 
-		node->mXIdx = DivDown(x + dx - 1, mMapTiles->mWidth);
-		node->mYIdx = DivDown(y + dy - z - 1, mMapTiles->mHeight);
-		node->mZIdx = DivDown(z, mMapTiles->mLHeight);
+		node->mXIdx = DivDown(x + dx - 1, mTileWidth);
+		node->mYIdx = DivDown(y + dy - z - 1, mTileHeight);
+		node->mZIdx = DivDown(z, mTileLHeight);
 		std::deque<TileNode *> *q = mTileMap.Touch(node->mXIdx, node->mYIdx, node->mZIdx);
 		node->mIt = q->insert(q->end(), node);
 
@@ -203,9 +134,9 @@ namespace Game
 	void
 	Map::UpdateSprite(TileNode *node)
 	{   	
-		int xIdx = DivDown(node->mX + node->mDX - 1, mMapTiles->mWidth);
-		int yIdx = DivDown(node->mY + node->mDY - node->mZ - 1, mMapTiles->mHeight);
-		int zIdx = DivDown(node->mZ, mMapTiles->mLHeight);
+		int xIdx = DivDown(node->mX + node->mDX - 1, mTileWidth);
+		int yIdx = DivDown(node->mY + node->mDY - node->mZ - 1, mTileHeight);
+		int zIdx = DivDown(node->mZ, mTileLHeight);
 
 		std::deque<TileNode *> *q;
 		
@@ -259,11 +190,13 @@ namespace Game
 		std::ifstream fin(name);
 		int w, h;
 		fin >> w >> h;
+		fin >> result->mTileLHeight;
 		std::string tilesname;
 		fin >> tilesname;
 
-
-		result->mMapTiles  = Resource::Get<MapTiles>(tilesname.c_str());
+		result->mMapSprite = Resource::Get<SimpleSprite>(tilesname.c_str());
+		result->mTileWidth = result->mMapSprite->mWidth;
+		result->mTileHeight = result->mMapSprite->mHeight - result->mTileLHeight;
 
 		int i, j, c = 0, d, cur_h;
 		for (j = 0; j != h; ++ j)
@@ -276,18 +209,19 @@ namespace Game
 					int id;
 					fin >> id;
 
-					if (id == -1) continue;
+					if (id < 0) continue;
 
-					result->mMapSprite.push_back(new MapSprite(id, result->mMapTiles));
-					result->AddConstantSprite(result->mMapSprite[result->mMapSprite.size() - 1],
-									  i * result->mMapTiles->mWidth,
-									  j * result->mMapTiles->mHeight,
-									  (cur_h - 1) * result->mMapTiles->mLHeight,
-									  result->mMapTiles->mWidth,
-									  result->mMapTiles->mHeight + result->mMapTiles->mLHeight,
-									  result->mMapTiles->mWidth - 1,
-									  result->mMapTiles->mHeight + result->mMapTiles->mLHeight - 1)->mIsMapTile = true;
-					
+					TileNode *node =
+						result->AddConstantSprite(result->mMapSprite,
+												  i * result->mTileWidth,
+												  j * result->mTileHeight,
+												  (cur_h - 1) * result->mTileLHeight,
+												  result->mTileWidth,
+												  result->mTileHeight + result->mTileLHeight,
+												  result->mTileWidth - 1,
+												  result->mTileHeight + result->mTileLHeight - 1);
+					node->mIsMapTile = true;
+					node->mState = id;					
 				}
 			}
 		}
@@ -365,8 +299,5 @@ namespace Game
 
 	Map::~Map(void)
 	{
-		int i;
-		for (i = 0; i != mMapSprite.size(); ++ i)
-			delete mMapSprite[i];
 	}
 }

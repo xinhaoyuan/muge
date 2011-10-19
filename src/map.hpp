@@ -13,24 +13,6 @@
 
 namespace Game
 {
-
-	class MapTiles
-	{
-		int mTPL;
-		SDL_Surface *mTileTexture;
-		
-	public:
-		int mWidth;
-		int mHeight;
-		int mLHeight;
-		int mTransR;
-		int mTransG;
-		int mTransB;
-		
-		static MapTiles *Load(const char *confname);
-		void Show(int id, GameEngine::tick_t tick, SDL_Surface *surface, SDL_Rect *rect);
-	};
-
 	class TileNode
 	{
 	private:
@@ -89,12 +71,14 @@ namespace Game
 	private:
 
 		std::deque<TileNode *>   mMotionList;
-		std::vector<MapSprite *> mMapSprite;
-		MapTiles                *mMapTiles;
+		SimpleSprite            *mMapSprite;
+		TileMap                  mTileMap;
+		
+		int mTileWidth;
+		int mTileHeight;
+		int mTileLHeight;
 
 	public:
-
-		TileMap    mTileMap;
 		
 		TileNode *AddConstantSprite(Sprite *sprite, int x, int y, int z, int w, int h, int dx, int dy);
 		TileNode *AddMotiveSprite(Sprite *sprite, int w, int h, int dx, int dy);

@@ -51,8 +51,8 @@ namespace Game
 
 		result->mStateCount = states;
 		
-		result->mRect.w = uwidth;
-		result->mRect.h = uheight;
+		result->mWidth = result->mRect.w = uwidth;
+		result->mHeight = result->mRect.h = uheight;
 
 		return result;
 	}
