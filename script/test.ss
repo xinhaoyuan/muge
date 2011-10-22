@@ -43,6 +43,6 @@
 	    	("DelayEventAdd" 0 180 move-right))
       (set! conv ("ConversationGet" "data/test.conv"))
       ("ConversationPageSet" conv 0)
-      ("CurrentConversationSet" conv)
+      ;; ("CurrentConversationSet" conv)
       ("TimerResume" 0)
 	  )

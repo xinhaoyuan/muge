@@ -64,10 +64,12 @@ namespace Game
 
 		fclose(s.file);
 		
-		n = ast_syntax_parse(n, 0);
+		ast_syntax_parse(n, 0);
 		sematic_symref_analyse(n);
 
 		object_t h = handle_from_ast(mHeap, n);
+		ast_free(n);
+		
 		mProg = continuation_from_handle(mHeap, h);
 	}
 

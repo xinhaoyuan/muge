@@ -9,6 +9,7 @@ extern "C" {
 #include <see/object.h>
 #include <see/as/simple_parse.h>
 #include <see/as/syntax_parse.h>
+#include <see/as/free.h>
 #include <see/vm/symref.h>
 #include <see/vm/io.h>
 #include <see/vm/vm.h>
