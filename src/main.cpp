@@ -53,8 +53,7 @@ public:
 		mMap = map;
 	}
 
-	void Draw(tick_t tick, void *scene) {
-
+	void Draw(tick_t tick, void *scene) {		
 		int i;
 		for (i = 0; i < TIMER_COUNT; ++ i)
 		{
@@ -100,74 +99,73 @@ public:
 		static std::vector<object_t> excall;
 
 		args.clear();
-		world.mSE.Apply(SLOT_GET(mContainer->pair.slot_car), &args, &excall);
+		world.mSE.Apply(SLOT_GET(mContainer->pair.slot_car), &args);
+		world.mSE.Execute(NULL, &excall);
 		world.mSE.ObjectUnprotect(mContainer);
-						
+
 		delete mTimer;
 		delete this;
 	}
 };
 
-static object_t
-EXFUNC_CurrentMapSet(void *, object_t func, int argc, object_t *argv)
+#define DECLARE_EXFUNC(name) \
+	static object_t EXFUNC_##name(void *priv, int argc, object_t *argv)
+#define EXFUNC     argv[0]
+#define EXARG(idx) argv[(idx) + 1]
+
+DECLARE_EXFUNC(CurrentMapSet)
 {
-	if (argv[0] == OBJECT_NULL)
+	if (EXARG(1) == OBJECT_NULL)
 		world.SetMap(NULL);
-	else world.SetMap((Map *)argv[0]->external.priv);
+	else world.SetMap((Map *)EXARG(0)->external.priv);
 	return OBJECT_NULL;
 }
 
-static object_t
-EXFUNC_SimpleSpriteGet(void *, object_t func, int argc, object_t *argv)
+DECLARE_EXFUNC(SimpleSpriteGet)
 {
 	object_t result;
 	
 	result = world.mSE.ObjectNew();
-	result->external.priv = Resource::Get<SimpleSprite>(xstring_cstr(argv[0]->string));
-	result->external.enumerate = NULL;
-	result->external.free = NULL;
+	result->external.priv = Resource::Get<SimpleSprite>(xstring_cstr(EXARG(0)->string));
+	result->external.type = &external_type_dummy;
 	OBJECT_TYPE_INIT(result, OBJECT_TYPE_EXTERNAL);
 
 	return result;
 }
 
-static object_t
-EXFUNC_MapGet(void *, object_t func, int argc, object_t *argv)
+DECLARE_EXFUNC(MapGet)
 {
 	object_t result;
 	
 	result = world.mSE.ObjectNew();
-	result->external.priv = Resource::Get<Map>(xstring_cstr(argv[0]->string));
-	result->external.enumerate = NULL;
-	result->external.free = NULL;
+	result->external.priv = Resource::Get<Map>(xstring_cstr(EXARG(0)->string));
+	result->external.type = &external_type_dummy;
 	OBJECT_TYPE_INIT(result, OBJECT_TYPE_EXTERNAL);
 
 	return result;
 }
 
-static object_t
-EXFUNC_NodeStateSet(void *, object_t func, int argc, object_t *argv)
+DECLARE_EXFUNC(NodeStateSet)
 {
-	TileNode *node = (TileNode *)argv[0]->external.priv;
-	int state = INT_UNBOX(argv[1]);
+	TileNode *node = (TileNode *)EXARG(0)->external.priv;
+	int state = INT_UNBOX(EXARG(1));
 
 	node->mState = state;
 	
 	return OBJECT_NULL;
 }
 
-static object_t
-EXFUNC_SpriteAdd(void *, object_t func, int argc, object_t *argv)
+DECLARE_EXFUNC(SpriteAdd)
 {
-	Map *map = (Map *)argv[0]->external.priv;	
-	Sprite *sprite = (Sprite *)argv[1]->external.priv;
-	int x = INT_UNBOX(argv[2]);
-	int y = INT_UNBOX(argv[3]);
-	int z = INT_UNBOX(argv[4]);
-	int w = INT_UNBOX(argv[5]);
-	int h = INT_UNBOX(argv[6]);
-	int dx = INT_UNBOX(argv[7]);
-	int dy = INT_UNBOX(argv[8]);
+	Map *map = (Map *)EXARG(0)->external.priv;	
+	Sprite *sprite = (Sprite *)EXARG(1)->external.priv;
+	int x = INT_UNBOX(EXARG(2));
+	int y = INT_UNBOX(EXARG(3));
+	int z = INT_UNBOX(EXARG(4));
+	int w = INT_UNBOX(EXARG(5));
+	int h = INT_UNBOX(EXARG(6));
+	int dx = INT_UNBOX(EXARG(7));
+	int dy = INT_UNBOX(EXARG(8));
 
 	object_t result = world.mSE.ObjectNew();
 	TileNode *node =
@@ -178,21 +176,19 @@ EXFUNC_SpriteAdd(void *, object_t func, int argc, object_t *argv)
 	node->mMotion->mYMotion.SetConstant(y);
 	node->mMotion->mZMotion.SetConstant(z);
 	
-	result->external.enumerate = NULL;
-	result->external.free = NULL;
+	result->external.type = &external_type_dummy;
 	OBJECT_TYPE_INIT(result, OBJECT_TYPE_EXTERNAL);
 
 	return result;
 }
 
-static object_t
-EXFUNC_NodeMove(void *, object_t func, int argc, object_t *argv)
+DECLARE_EXFUNC(NodeMove)
 {
-	TileNode *node = (TileNode *)argv[0]->external.priv;
-	int x = INT_UNBOX(argv[1]);
-	int y = INT_UNBOX(argv[2]);
-	int z = INT_UNBOX(argv[3]);
-	int l = INT_UNBOX(argv[4]);
+	TileNode *node = (TileNode *)EXARG(0)->external.priv;
+	int x = INT_UNBOX(EXARG(1));
+	int y = INT_UNBOX(EXARG(2));
+	int z = INT_UNBOX(EXARG(3));
+	int l = INT_UNBOX(EXARG(4));
 
 	node->mMotion->mXMotion.SetInterval(world.mTick[TIMER_MAP], node->mMotion->mXMotion.Get(world.mTick[TIMER_MAP]),
 										world.mTick[TIMER_MAP] + l, x);
@@ -205,11 +201,10 @@ EXFUNC_NodeMove(void *, object_t func, int argc, object_t *argv)
 }
 
 
-static object_t
-EXFUNC_NodeShiver(void *, object_t func, int argc, object_t *argv)
+DECLARE_EXFUNC(NodeShiver)
 {
-	TileNode *node = (TileNode *)argv[0]->external.priv;
-	int d = INT_UNBOX(argv[1]);
+	TileNode *node = (TileNode *)EXARG(0)->external.priv;
+	int d = INT_UNBOX(EXARG(1));
 
 	node->mMotion->mXMotion.SetShiver(node->mMotion->mXMotion.Get(world.mTick[TIMER_MAP]), d);
 	node->mMotion->mYMotion.SetShiver(node->mMotion->mYMotion.Get(world.mTick[TIMER_MAP]), d);
@@ -219,11 +214,10 @@ EXFUNC_NodeShiver(void *, object_t func, int argc, object_t *argv)
 }
 
 
-static object_t
-EXFUNC_ViewPointSet(void *, object_t func, int argc, object_t *argv)
+DECLARE_EXFUNC(ViewPointSet)
 {
-	int x = INT_UNBOX(argv[0]);
-	int y = INT_UNBOX(argv[1]);
+	int x = INT_UNBOX(EXARG(0));
+	int y = INT_UNBOX(EXARG(1));
 
 	world.mVPXMotion.SetConstant(x);
 	world.mVPYMotion.SetConstant(y);
@@ -231,12 +225,11 @@ EXFUNC_ViewPointSet(void *, object_t func, int argc, object_t *argv)
 	return OBJECT_NULL;
 }
 
-static object_t
-EXFUNC_ViewPointMove(void *, object_t func, int argc, object_t *argv)
+DECLARE_EXFUNC(ViewPointMove)
 {
-	int x = INT_UNBOX(argv[0]);
-	int y = INT_UNBOX(argv[1]);
-	int l = INT_UNBOX(argv[2]);
+	int x = INT_UNBOX(EXARG(0));
+	int y = INT_UNBOX(EXARG(1));
+	int l = INT_UNBOX(EXARG(2));
 
 	world.mVPXMotion.SetInterval(world.mTick[TIMER_MAP], world.mVPXMotion.Get(world.mTick[TIMER_MAP]),
 								 world.mTick[TIMER_MAP] + l, x);
@@ -247,10 +240,9 @@ EXFUNC_ViewPointMove(void *, object_t func, int argc, object_t *argv)
 }
 
 
-static object_t
-EXFUNC_ViewPointShiver(void *, object_t func, int argc, object_t *argv)
+DECLARE_EXFUNC(ViewPointShiver)
 {
-	int d = INT_UNBOX(argv[0]);
+	int d = INT_UNBOX(EXARG(0));
 
 	world.mVPXMotion.SetShiver(world.mVPXMotion.Get(world.mTick[TIMER_MAP]), d);
 	world.mVPYMotion.SetShiver(world.mVPYMotion.Get(world.mTick[TIMER_MAP]), d);
@@ -258,12 +250,11 @@ EXFUNC_ViewPointShiver(void *, object_t func, int argc, object_t *argv)
 	return OBJECT_NULL;
 }
 
-static object_t
-EXFUNC_DelayEventAdd(void *, object_t func, int argc, object_t *argv)
+DECLARE_EXFUNC(DelayEventAdd)
 {
-	int tick_idx = INT_UNBOX(argv[0]);
-	int delay = INT_UNBOX(argv[1]);
-	object_t handler = argv[2];
+	int tick_idx = INT_UNBOX(EXARG(0));
+	int delay = INT_UNBOX(EXARG(1));
+	object_t handler = EXARG(2);
 
 	object_t container = world.mSE.ObjectNew();
 	SLOT_SET(container->pair.slot_car, handler);
@@ -278,51 +269,45 @@ EXFUNC_DelayEventAdd(void *, object_t func, int argc, object_t *argv)
 	return OBJECT_NULL;
 }
 
-static object_t
-EXFUNC_TimerPause(void *, object_t func, int argc, object_t *argv)
+DECLARE_EXFUNC(TimerPause)
 {
-	int tick_idx = INT_UNBOX(argv[0]);
+	int tick_idx = INT_UNBOX(EXARG(0));
 	world.mTimerPause[tick_idx] = true;
 	return OBJECT_NULL;
 }
 
-static object_t
-EXFUNC_TimerResume(void *, object_t func, int argc, object_t *argv)
+DECLARE_EXFUNC(TimerResume)
 {
-	int tick_idx = INT_UNBOX(argv[0]);
+	int tick_idx = INT_UNBOX(EXARG(0));
 	world.mTimerPause[tick_idx] = false;
 	return OBJECT_NULL;
 }
 
-static object_t
-EXFUNC_CurrentConversationSet(void *, object_t func, int argc, object_t *argv)
+DECLARE_EXFUNC(CurrentConversationSet)
 {
-	if (argv[0] == OBJECT_NULL)
+	if (EXARG(0) == OBJECT_NULL)
 		world.mConv = NULL;
-	else world.mConv = (Conversation *)argv[0]->external.priv;
+	else world.mConv = (Conversation *)EXARG(0)->external.priv;
 	return OBJECT_NULL;
 }
 
-static object_t
-EXFUNC_ConversationPageSet(void *, object_t func, int argc, object_t *argv)
+DECLARE_EXFUNC(ConversationPageSet)
 {
-	Conversation *conv = (Conversation *)argv[0]->external.priv;
-	int page = INT_UNBOX(argv[1]);
+	Conversation *conv = (Conversation *)EXARG(0)->external.priv;
+	int page = INT_UNBOX(EXARG(1));
 
 	if (conv->SetPage(page))
 		return INT_BOX(0);
 	else return OBJECT_NULL;
 }
 
-static object_t
-EXFUNC_ConversationGet(void *, object_t func, int argc, object_t *argv)
+DECLARE_EXFUNC(ConversationGet)
 {
 	object_t result;
 	
 	result = world.mSE.ObjectNew();
-	result->external.priv = Resource::Get<Conversation>(xstring_cstr(argv[0]->string));
-	result->external.enumerate = NULL;
-	result->external.free = NULL;
+	result->external.priv = Resource::Get<Conversation>(xstring_cstr(EXARG(0)->string));
+	result->external.type = &external_type_dummy;
 	OBJECT_TYPE_INIT(result, OBJECT_TYPE_EXTERNAL);
 
 	return result;
@@ -344,7 +329,7 @@ public:
 		SLOT_SET(world.mHandlerPair->pair.slot_cdr, OBJECT_NULL);
 		OBJECT_TYPE_INIT(world.mHandlerPair, OBJECT_TYPE_PAIR);
 		
-		world.mSE.LoadScript("script/test.ss");
+		object_t script = world.mSE.LoadScript("script/test.ss");
 		
 		world.mSE.ExternalFuncRegister("CurrentMapSet", EXFUNC_CurrentMapSet, NULL);
 		world.mSE.ExternalFuncRegister("MapGet", EXFUNC_MapGet, NULL);
@@ -368,19 +353,19 @@ public:
 		world.mSE.ExternalFuncRegister("ConversationGet", EXFUNC_ConversationGet, NULL);
 		world.mSE.ExternalFuncRegister("CurrentConversationSet", EXFUNC_CurrentConversationSet, NULL);
 		world.mSE.ExternalFuncRegister("ConversationPageSet", EXFUNC_ConversationPageSet, NULL);
-		
+
 		object_t exret;
 		std::vector<object_t> excall;
+		excall.clear();
+		world.mSE.Apply(script, &excall);
 		while (1)
 		{
 			int r = world.mSE.Execute(exret, &excall);
-			if (r == APPLY_EXIT || r == APPLY_EXIT_NO_VALUE)
-				break;
-
 			if (r == APPLY_EXTERNAL_CALL)
 			{
 				exret = OBJECT_NULL;
 			}
+			else break;
 		}
 
 		IO::Open();
