@@ -1,45 +1,17 @@
-.PHONY: all stat-loc clean
+.PHONY: all 
 
-V       ?= @
-E_ENCODE = $(shell echo $(1) | sed -e 's!_!_1!g' -e 's!/!_2!g')
-E_DECODE = $(shell echo $(1) | sed -e 's!_2!/!g' -e 's!_1!_!g')
-T_BASE   = target
+T_CC_FLAGS       ?= $(shell sdl-config --cflags) -std=c++0x -Wall -Isrc -I../see/src 
+T_CC_OPT_FLAGS   ?= -O0
+T_CC_DEBUG_FLAGS ?= -g
 
-T_FLAGS_OPT  ?= -O0 -g
-T_CXX_FLAGS  ?= $(shell sdl-config --cflags) ${T_FLAGS_OPT} -I/home/xinhaoyuan/include -std=c++0x -D__LINUX__
-T_CC_FLAGS   ?= $(shell sdl-config --cflags) ${T_FLAGS_OPT} -I/home/xinhaoyuan/include -std=c99   -D__LINUX__
-T_LINK_FLAGS ?= $(shell sdl-config --libs) -lpthread -g /home/xinhaoyuan/see/target/see.a -lSDL_ttf -lSDL_image
+SRCFILES:= $(shell find src '(' '!' -regex '.*/_.*' ')' -and '(' -iname "*.cpp" ')' | sed -e 's!^\./!!g') ../see/src/cpp_binding/script.cpp \
 
-SRCFILES:= $(shell find src '(' '!' -regex '^\./_.*' ')' -and '(' -iname "*.cpp" -or -iname "*.c" ')' | sed -e 's!\./!!g')
-OBJFILES:= $(addprefix ${T_BASE}/,$(addsuffix .o,$(foreach FILE,${SRCFILES},$(call E_ENCODE,${FILE}))))
-DEPFILES:= $(OBJFILES:.o=.d)
+include ${T_BASE}/utl/template.mk
 
-all: ${T_BASE}/test
-
-stat-loc:
-	${V}wc ${SRCFILES} -l
-
-clean:
-	-${V}rm -f target/*
+all: ${T_OBJ}/${PRJ}.a
 
 -include ${DEPFILES}
 
-${T_BASE}/%.cpp.d:
-	@echo DEP $(call E_DECODE,$*).cpp
-	${V}${CXX} $(call E_DECODE,$*).cpp -o$@ -MM $(T_CXX_FLAGS) -MT $(@:.d=.o)
-
-${T_BASE}/%.cpp.o: ${T_BASE}/%.cpp.d
-	@echo CXX $(call E_DECODE,$*).cpp
-	${V}${CXX} $(call E_DECODE,$*).cpp -o$@ ${T_CXX_FLAGS} -c
-
-${T_BASE}/%.c.d:
-	@echo DEP $(call E_DECODE,$*).c
-	${V}${CXX} $(call E_DECODE,$*).c -o$@ -MM $(T_CXX_FLAGS) -MT $(@:.d=.o)
-
-${T_BASE}/%.c.o: ${T_BASE}/%.c.d
-	@echo CC $(call E_DECODE,$*).c
-	${V}${CC} $(call E_DECODE,$*).c -o$@ ${T_CC_FLAGS} -c
-
-${T_BASE}/test: ${OBJFILES}
-	@echo LINK $@
-	${V}${CXX} $^ -o$@ ${T_LINK_FLAGS}
+${T_OBJ}/${PRJ}.a: ${OBJFILES} ${T_OBJ}/see.a
+	@echo AR $@
+	${V}ar r $@ $^
