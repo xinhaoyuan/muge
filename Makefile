@@ -12,6 +12,6 @@ all: ${T_OBJ}/${PRJ}.a
 
 -include ${DEPFILES}
 
-${T_OBJ}/${PRJ}.a: ${OBJFILES} ${T_OBJ}/see.a
+${T_OBJ}/${PRJ}.a: ${OBJFILES}
 	@echo AR $@
 	${V}ar r $@ $^
