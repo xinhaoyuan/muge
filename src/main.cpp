@@ -101,7 +101,7 @@ public:
 
         args.clear();
         world.mSE.Apply(SLOT_GET(mContainer->pair.slot_car), &args);
-        world.mSE.Execute(NULL, &excall);
+        world.mSE.Execute();
         world.mSE.ObjectUnprotect(mContainer);
 
         delete mTimer;
@@ -361,16 +361,7 @@ public:
         std::vector<object_t> excall;
         excall.clear();
         world.mSE.Apply(script, &excall);
-        while (1)
-        {
-            int r = world.mSE.Execute(exret, &excall);
-            if (r == APPLY_EXTERNAL_CALL)
-            {
-                exret = OBJECT_NULL;
-            }
-            else break;
-        }
-
+        world.mSE.Execute();
         IO::Open();
     }
 } initEvent;
